@@ -22,14 +22,14 @@ import warnings
 import hydra
 import numpy as np
 import torch
-from LearnedCloudCT.ProbCT.util.visualization import SummaryWriter
-from LearnedCloudCT.dataloader.microphysics_dataset import get_cloud_microphysics_datasets, trivial_collate
-from LearnedCloudCT.ProbCT.CTnet import *
-from LearnedCloudCT.ProbCT.util.stats import Stats
+from ProbCT.util.visualization import SummaryWriter
+from dataloader.microphysics_dataset import get_cloud_microphysics_datasets, trivial_collate
+from ProbCT.CTnet import *
+from ProbCT.util.stats import Stats
 from omegaconf import DictConfig
 import torch
-from LearnedCloudCT.scene.volumes import Volumes
-from LearnedCloudCT.scene.cameras import PerspectiveCameras
+from scene.volumes import Volumes
+from scene.cameras import PerspectiveCameras
 
 # from ignite.handlers.param_scheduler import create_lr_scheduler_with_warmup
 

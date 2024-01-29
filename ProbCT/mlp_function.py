@@ -25,7 +25,7 @@
 
 from typing import Tuple
 import torch
-from decoder.LoRA import Linear as LoRALinear
+from ProbCT.decoder.LoRA import Linear as LoRALinear
 
 def _xavier_init(linear):
     """

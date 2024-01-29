@@ -1,4 +1,4 @@
-# This file contains util routines for VIP-CT.
+# This file contains util routines for VIP-CT and ProbCT.
 # You are very welcome to use this code. For this, clearly acknowledge
 # the source of this code, and cite the paper described in the readme file:
 # Roi Ronen, Vadim Holodovsky and Yoav. Y. Schechner, "Variable Imaging Projection Cloud Scattering Tomography",

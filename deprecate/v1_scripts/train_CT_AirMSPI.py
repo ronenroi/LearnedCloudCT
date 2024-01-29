@@ -1,4 +1,4 @@
-# This file contains the main script for VIP-CT training on AirMSPI data.
+# This file contains the main script for VIP-CT and ProbCT training on AirMSPI data.
 # You are very welcome to use this code. For this, clearly acknowledge
 # the source of this code, and cite the paper described in the readme file:
 # Roi Ronen, Vadim Holodovsky and Yoav. Y. Schechner, "Variable Imaging Projection Cloud Scattering Tomography",
@@ -18,14 +18,14 @@ import pickle
 import warnings
 import hydra
 import numpy as np
-from LearnedCloudCT.ProbCT.util.visualization import SummaryWriter
-from LearnedCloudCT.dataloader.airmspi_dataset import get_airmspi_datasets, trivial_collate
-from LearnedCloudCT.ProbCT.CTnet import *
-from LearnedCloudCT.ProbCT.util.stats import Stats
+from ProbCT.util.visualization import SummaryWriter
+from dataloader.airmspi_dataset import get_airmspi_datasets, trivial_collate
+from ProbCT.CTnet import *
+from ProbCT.util.stats import Stats
 from omegaconf import DictConfig
 import torch
-from LearnedCloudCT.scene.cameras import AirMSPICameras
-from LearnedCloudCT.scene.volumes import Volumes
+from scene.cameras import AirMSPICameras
+from scene.volumes import Volumes
 
 relative_error = lambda ext_est, ext_gt, eps=1e-6 : torch.norm(ext_est.view(-1) - ext_gt.view(-1),p=1) / (torch.norm(ext_gt.view(-1),p=1) + eps)
 mass_error = lambda ext_est, ext_gt, eps=1e-6 : (torch.norm(ext_gt.view(-1),p=1) - torch.norm(ext_est.view(-1),p=1)) / (torch.norm(ext_gt.view(-1),p=1) + eps)

@@ -20,14 +20,14 @@ import warnings
 import hydra
 import numpy as np
 import torch
-from LearnedCloudCT.dataloader.dataset import get_cloud_datasets, trivial_collate
-from LearnedCloudCT.ProbCT.CTnet import *
+from dataloader.dataset import get_cloud_datasets, trivial_collate
+from ProbCT.CTnet import *
 from omegaconf import OmegaConf
 from omegaconf import DictConfig
-from LearnedCloudCT.ProbCT.util.plot_util import *
-from LearnedCloudCT.ProbCT.util.visualization import SummaryWriter
+from ProbCT.util.plot_util import *
+from ProbCT.util.visualization import SummaryWriter
 import scipy.io as sio
-from LearnedCloudCT.scene.volumes import Volumes
+from scene.volumes import Volumes
 
 
 # error criteria

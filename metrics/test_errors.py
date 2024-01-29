@@ -1,4 +1,4 @@
-# This file contains the test error criteria for VIP-CT evaluation.
+# This file contains the test error criteria for VIP-CT and ProbCT evaluation.
 # You are very welcome to use this code. For this, clearly acknowledge
 # the source of this code, and cite our papers described in the readme file.:
 # Roi Ronen, Vadim Holodovsky and Yoav. Y. Schechner, "Variable Imaging Projection Cloud Scattering Tomography",

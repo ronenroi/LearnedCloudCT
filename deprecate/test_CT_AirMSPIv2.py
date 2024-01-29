@@ -17,16 +17,16 @@ import os, time
 import warnings
 import hydra
 import numpy as np
-from LearnedCloudCT.dataloader.airmspi_dataset import get_real_world_airmspi_datasets, trivial_collate
-from LearnedCloudCT.ProbCT.CTnetV2 import *
+from dataloader.airmspi_dataset import get_real_world_airmspi_datasets, trivial_collate
+from ProbCT.CTnetV2 import *
 
 from omegaconf import OmegaConf
 from omegaconf import DictConfig
 from  ProbCT.scene.cameras import AirMSPICameras
-from LearnedCloudCT.scene.volumes import Volumes
+from scene.volumes import Volumes
 import scipy.io as sio
 from ProbCT import *
-from LearnedCloudCT.renderer.shdom_renderer import DiffRendererSHDOM_Airmspi
+from renderer.shdom_renderer import DiffRendererSHDOM_Airmspi
 
 CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs")
 

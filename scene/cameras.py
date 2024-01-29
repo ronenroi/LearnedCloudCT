@@ -1,4 +1,4 @@
-# This file contains the code for camera object for VIP-CT.
+# This file contains the code for camera object for VIP-CT and ProbCT.
 # It is based on PyTorch3D source code ('https://github.com/facebookresearch/pytorch3d') by FAIR
 # Copyright (c) Facebook, Inc. and its affiliates.
 # All rights reserved.
@@ -23,8 +23,8 @@ from typing import List, Optional, Tuple, Union
 import numpy as np
 import torch
 import torch.nn.functional as F
-from LearnedCloudCT.ProbCT.util.types import Device
-from LearnedCloudCT.ProbCT.util.renderer_utils import TensorProperties
+from ProbCT.util.types import Device
+from ProbCT.util.renderer_utils import TensorProperties
 
 
 # Default values for rotation and translation matrices.
@@ -401,7 +401,7 @@ def _broadcast_bmm(a, b):
 if __name__ == "__main__":
     import pickle
     import matplotlib.pyplot as plt
-    from LearnedCloudCT.ProbCT.scene.volumes import Volumes
+    from ProbCT.scene.volumes import Volumes
 
 
     #test camera projection

@@ -1,4 +1,4 @@
-# This file contains the main script for VIP-CT ablations.
+# This file contains the main script for VIP-CT and ProbCT ablations.
 # You are very welcome to use this code. For this, clearly acknowledge
 # the source of this code, and cite the paper described in the readme file:
 # Roi Ronen, Vadim Holodovsky and Yoav. Y. Schechner, "Variable Imaging Projection Cloud Scattering Tomography",
@@ -22,13 +22,13 @@ import warnings
 import hydra
 import numpy as np
 import torch
-from LearnedCloudCT.ProbCT.util.visualization import SummaryWriter
-from LearnedCloudCT.dataset import get_cloud_datasets, trivial_collate
-from LearnedCloudCT.CTnet import *
-from LearnedCloudCT.util.stats import Stats
+from ProbCT.util.visualization import SummaryWriter
+from dataset import get_cloud_datasets, trivial_collate
+from CTnet import *
+from util.stats import Stats
 from omegaconf import DictConfig
 import torch
-from LearnedCloudCT.ProbCT.scene.volumes import Volumes
+from ProbCT.scene.volumes import Volumes
 
 # from ignite.handlers.param_scheduler import create_lr_scheduler_with_warmup
 

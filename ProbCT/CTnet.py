@@ -12,17 +12,17 @@
 #
 # This source code is licensed under the GPL-3.0 license found in the
 # LICENSE file in the root directory of this source tree.
-from LearnedCloudCT.scene.volumes import Volumes
+from scene.volumes import Volumes
 
 
 from typing import Tuple
 
 import torch
-from LearnedCloudCT.scene.cameras import PerspectiveCameras, AirMSPICameras
+from scene.cameras import PerspectiveCameras, AirMSPICameras
 
 from .mlp_function import MLPWithInputSkips, MLPIdentity
-from LearnedCloudCT.ProbCT.encoder.encoder import Backbone
-from LearnedCloudCT.ProbCT.decoder.decoder import Decoder
+from ProbCT.encoder.encoder import Backbone
+from ProbCT.decoder.decoder import Decoder
 
 
 class CTnet(torch.nn.Module):

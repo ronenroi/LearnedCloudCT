@@ -5,7 +5,7 @@ import argparse
 import shdom
 import dill as pickle
 import torch
-from LearnedCloudCT.renderer.shdom_util import Monotonous
+from renderer.shdom_util import Monotonous
 import matplotlib.pyplot as plt
 from joblib import Parallel, delayed
 

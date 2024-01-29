@@ -1,4 +1,4 @@
-# This file contains the main script for VIP-CT and ProbCT models.
+# This file contains the main script for VIP-CT and ProbCT and ProbCT models.
 # You are very welcome to use this code. For this, clearly acknowledge
 # the source of this code, and cite our papers described in the readme file.
 #
@@ -19,24 +19,24 @@ import hydra
 import numpy as np
 import torch
 from dataloader.dataset import get_cloud_datasets, trivial_collate
-from LearnedCloudCT.ProbCT.CTnet import CTnet
-from LearnedCloudCT.ProbCT.CTnetV2 import *
+from ProbCT.CTnet import CTnet
+from ProbCT.CTnetV2 import *
 from omegaconf import OmegaConf
 from omegaconf import DictConfig
-from LearnedCloudCT.ProbCT.util.plot_util import *
-from LearnedCloudCT.ProbCT.util.visualization import SummaryWriter
+from ProbCT.util.plot_util import *
+from ProbCT.util.visualization import SummaryWriter
 import scipy.io as sio
 from metrics.test_errors import *
 from metrics.losses import *
 from ProbCT import *
-from LearnedCloudCT.scene.volumes import Volumes
-from LearnedCloudCT.scene.cameras import PerspectiveCameras
+from scene.volumes import Volumes
+from scene.cameras import PerspectiveCameras
 import copy
 import os, glob
 import pickle
 import matplotlib.pyplot as plt
 import numpy as np
-from LearnedCloudCT.dataloader.noise import SatelliteNoise
+from dataloader.noise import SatelliteNoise
 import scipy.stats, scipy
 
 CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs")
@@ -186,7 +186,7 @@ def main(cfg: DictConfig):
         _, val_dataset = get_cloud_datasets(
             cfg=cfg
         )
-        # Initialize VIP-CT model
+        # Initialize VIP-CT or ProbCT models
         if cfg.version == 'V1':
             model = CTnet(cfg=cfg, n_cam=cfg.data.n_cam)
         else:

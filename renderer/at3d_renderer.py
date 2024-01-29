@@ -8,7 +8,7 @@ from joblib import Parallel, delayed
 from collections import OrderedDict
 import warnings
 import pickle
-from LearnedCloudCT.renderer.at3d_util import load_from_csv
+from renderer.at3d_util import load_from_csv
 
 
 def plot(gt_images,images,loss):

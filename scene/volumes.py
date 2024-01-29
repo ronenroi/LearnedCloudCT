@@ -1,4 +1,4 @@
-# This file contains the code for cloud volume object for VIP-CT.
+# This file contains the code for cloud volume object for VIP-CT and ProbCT.
 # It is based on PyTorch3D source code ('https://github.com/facebookresearch/pytorch3d') by FAIR
 # Copyright (c) Facebook, Inc. and its affiliates.
 # All rights reserved.
@@ -20,7 +20,7 @@
 
 import copy
 import torch
-from LearnedCloudCT.ProbCT.util.types import Device, make_device
+from ProbCT.util.types import Device, make_device
 from typing import List, Sequence, Tuple, Union
 
 _TensorBatch = Union[torch.Tensor, List[torch.Tensor], Tuple[torch.Tensor]]

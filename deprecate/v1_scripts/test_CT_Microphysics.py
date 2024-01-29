@@ -22,15 +22,15 @@ import warnings
 import hydra
 import numpy as np
 import torch
-from LearnedCloudCT.ProbCT.util.visualization import SummaryWriter
-from LearnedCloudCT.dataloader.microphysics_dataset import get_cloud_microphysics_datasets, trivial_collate
-from LearnedCloudCT.ProbCT.CTnet import *
-from LearnedCloudCT.ProbCT.util.stats import Stats
+from ProbCT.util.visualization import SummaryWriter
+from dataloader.microphysics_dataset import get_cloud_microphysics_datasets, trivial_collate
+from ProbCT.CTnet import *
+from ProbCT.util.stats import Stats
 from omegaconf import OmegaConf
 from omegaconf import DictConfig
 import matplotlib.pyplot as plt
-from LearnedCloudCT.scene.volumes import Volumes
-from LearnedCloudCT.scene.cameras import PerspectiveCameras
+from scene.volumes import Volumes
+from scene.cameras import PerspectiveCameras
 
 relative_error = lambda ext_est, ext_gt, eps=1e-6 : torch.norm(ext_est.view(-1) - ext_gt.view(-1),p=1) / (torch.norm(ext_gt.view(-1),p=1) + eps)
 mass_error = lambda ext_est, ext_gt, eps=1e-6 : (torch.norm(ext_gt.view(-1),p=1) - torch.norm(ext_est.view(-1),p=1)) / (torch.norm(ext_gt.view(-1),p=1) + eps)

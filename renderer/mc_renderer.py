@@ -6,7 +6,7 @@ import dill as pickle
 import torch
 import matplotlib.pyplot as plt
 from MC_renderer.cuda_utils import float_reg
-from LearnedCloudCT.renderer.shdom_util import Monotonous
+from renderer.shdom_util import Monotonous
 from MC_renderer.classes.scene_seed_roi import *
 from MC_renderer.classes.camera import Camera2 as MCcamera
 from MC_renderer.classes.camera import Camera as CameraO

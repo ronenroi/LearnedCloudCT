@@ -22,16 +22,16 @@ import warnings
 import hydra
 import numpy as np
 import torch
-from LearnedCloudCT.ProbCT.util.visualization import SummaryWriter
-from LearnedCloudCT.dataloader.dataset import get_cloud_datasets, trivial_collate
-from LearnedCloudCT.ProbCT.CTnet import *
-from LearnedCloudCT.ProbCT.util.stats import Stats
+from ProbCT.util.visualization import SummaryWriter
+from dataloader.dataset import get_cloud_datasets, trivial_collate
+from ProbCT.CTnet import *
+from ProbCT.util.stats import Stats
 from omegaconf import OmegaConf
 from omegaconf import DictConfig
 import matplotlib.pyplot as plt
-from LearnedCloudCT.scene.cameras import AirMSPICameras
+from scene.cameras import AirMSPICameras
 import scipy.io as sio
-from LearnedCloudCT.ProbCT.scene.volumes import Volumes
+from ProbCT.scene.volumes import Volumes
 
 
 relative_error = lambda ext_est, ext_gt, eps=1e-6 : torch.norm(ext_est.view(-1) - ext_gt.view(-1),p=1) / (torch.norm(ext_gt.view(-1),p=1) + eps)

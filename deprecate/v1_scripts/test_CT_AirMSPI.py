@@ -1,4 +1,4 @@
-# This file contains the main script for VIP-CT evaluation on AirMSPI data.
+# This file contains the main script for VIP-CT and ProbCT evaluation on AirMSPI data.
 # You are very welcome to use this code. For this, clearly acknowledge
 # the source of this code, and cite the paper described in the readme file:
 # Roi Ronen, Vadim Holodovsky and Yoav. Y. Schechner, "Variable Imaging Projection Cloud Scattering Tomography",
@@ -17,12 +17,12 @@ import os, time
 import warnings
 import hydra
 import numpy as np
-from LearnedCloudCT.dataloader.airmspi_dataset import get_real_world_airmspi_datasets, trivial_collate
-from LearnedCloudCT.ProbCT.CTnet import *
+from dataloader.airmspi_dataset import get_real_world_airmspi_datasets, trivial_collate
+from ProbCT.CTnet import *
 from omegaconf import OmegaConf
 from omegaconf import DictConfig
 from  ProbCT.scene.cameras import AirMSPICameras
-from LearnedCloudCT.scene.volumes import Volumes
+from scene.volumes import Volumes
 import scipy.io as sio
 
 CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../configs")

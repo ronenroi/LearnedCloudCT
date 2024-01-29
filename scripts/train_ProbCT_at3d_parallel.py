@@ -1,4 +1,4 @@
-# This file contains the main script for VIP-CT training.
+# This file contains the main script for VIP-CT and ProbCT training.
 # You are very welcome to use this code. For this, clearly acknowledge
 # the source of this code, and cite the paper described in the readme file:
 # Roi Ronen, Vadim Holodovsky and Yoav. Y. Schechner, "Variable Imaging Projection Cloud Scattering Tomography",
@@ -14,24 +14,30 @@
 # LICENSE file in the root directory of this source tree.
 
 
+import collections
+import os, time
+import pickle
 import warnings
+# import sys
+# sys.path.insert(0, '/home/roironen/pyshdom-NN/projects')
 import hydra
 import numpy as np
 import torch
-from omegaconf import DictConfig
 
-from LearnedCloudCT.ProbCT.CTnet import CTnet
-from LearnedCloudCT.ProbCT.CTnetV2 import *
-from LearnedCloudCT.ProbCT.util.stats import Stats
-from LearnedCloudCT.ProbCT.util.visualization import SummaryWriter
-from LearnedCloudCT.ProbCT.decoder.global_fusion import Global_fusion
-from LearnedCloudCT.scene.cameras import PerspectiveCameras
-from LearnedCloudCT.scene.volumes import Volumes
 from dataloader.dataset import get_cloud_datasets, trivial_collate
+from ProbCT.util.visualization import SummaryWriter
+from ProbCT.CTnetV2 import *
+from ProbCT.CTnet import CTnet
+from ProbCT.util.stats import Stats
+from omegaconf import DictConfig
 from metrics.test_errors import *
+from metrics.losses import *
 from ProbCT import *
-
-
+from scene.volumes import Volumes
+from scene.cameras import PerspectiveCameras
+from renderer.at3d_renderer import DiffRendererAT3D
+# from shdom.shdom_nn import *
+import matplotlib.pyplot as plt
 
 # relative_error = lambda ext_est, ext_gt, eps=1e-6 : torch.norm(ext_est.view(-1) - ext_gt.view(-1),p=1) / (torch.norm(ext_gt.view(-1),p=1) + eps)
 # mass_error = lambda ext_est, ext_gt, eps=1e-6 : (torch.norm(ext_gt.view(-1),p=1) - torch.norm(ext_est.view(-1),p=1)) / (torch.norm(ext_gt.view(-1),p=1) + eps)
@@ -47,7 +53,7 @@ CE = torch.nn.CrossEntropyLoss(reduction='mean')
 #     criterion = criterion.to(device)
 #     return criterion
 
-@hydra.main(config_path=CONFIG_DIR, config_name="vipctV2_global_train")
+@hydra.main(config_path=CONFIG_DIR, config_name="vipctV2_shdom_train")
 def main(cfg: DictConfig):
 
     # Set the relevant seeds for reproducibility.
@@ -106,11 +112,9 @@ def main(cfg: DictConfig):
         # optimizer_state_dict = loaded_data["optimizer"]
         # start_epoch = stats.epoch
 
-    global_fusion = Global_fusion.from_cfg(cfg).to(device=device).float()
-
     # Initialize the optimizer.
     optimizer = torch.optim.Adam(
-        global_fusion.parameters(),
+        model.parameters(),
         lr=cfg.optimizer.lr,
         weight_decay=cfg.optimizer.wd,
     )
@@ -156,24 +160,27 @@ def main(cfg: DictConfig):
         collate_fn=trivial_collate,
     )
     err = torch.nn.MSELoss()
-    # if cfg.optimizer.ce_weight_zero:
-    #     w = torch.ones(cfg.cross_entropy.bins, device=device)
-    #     w[0] /= 100
-    #     CE.weight = w
+    if cfg.optimizer.ce_weight_zero:
+        w = torch.ones(cfg.cross_entropy.bins, device=device)
+        w[0] /= 100
+        CE.weight = w
 
     # err = torch.nn.L1Loss(reduction='sum')
     # Set the model to the training mode.
     model.train().float()
-    for name, param in model.named_parameters():
-        # if 'decoder.decoder.2.mlp.7' in name or 'decoder.decoder.3' in name:
-        # if 'decoder' in name:
-        #     param.requires_grad = True
-        # else:
-        param.requires_grad = False
-    if cfg.ct_net.encoder_mode == 'eval':
-        model._image_encoder.eval()
-        model.mlp_cam_center.eval()
-        model.mlp_xyz.eval()
+    diff_renderer_at3d = DiffRendererAT3D(cfg=cfg)
+
+    if cfg.ct_net.stop_encoder_grad:
+        for name, param in model.named_parameters():
+            # if 'decoder.decoder.2.mlp.7' in name or 'decoder.decoder.3' in name:
+            if 'decoder' in name:
+                param.requires_grad = True
+            else:
+                param.requires_grad = False
+        if cfg.ct_net.encoder_mode == 'eval':
+            model._image_encoder.eval()
+            model.mlp_cam_center.eval()
+            model.mlp_xyz.eval()
     # for name, param in model.named_parameters():
     #     if param.requires_grad:
     #         print(name)
@@ -183,9 +190,8 @@ def main(cfg: DictConfig):
     if writer:
         val_scatter_ind = np.random.permutation(len(val_dataloader))[:5]
     est_vol_list= []
-    cloud_out_list= []
-    gt_vol_list= []
-    query_indices_list = []
+    masks_conf = []
+    images_list =[]
     relative_err_tot = 0
     relative_mass_err_tot = 0
     for epoch in range(start_epoch, cfg.optimizer.max_epochs):
@@ -220,66 +226,94 @@ def main(cfg: DictConfig):
                 volume,
                 masks
             )
-            # if out["output"][0].shape[-1]==1:
-            #     conf_vol = None
-            #     mask_conf = masks[0]
-            # else:
-            #     out["output"], out["output_conf"], probs = get_pred_and_conf_from_discrete(out["output"],
-            #                                                                         cfg.cross_entropy.min,
-            #                                                                         cfg.cross_entropy.max,
-            #                                                                         cfg.cross_entropy.bins,
-            #                                                                         pred_type=cfg.ct_net.pred_type,
-            #                                                                         conf_type=cfg.ct_net.conf_type,
-            #                                                                         prob_gain=cfg.ct_net.prob_gain)
-            #     conf_vol = torch.zeros(volume.extinctions.numel(), device=volume.device)
-            #     conf_vol[out['query_indices'][0]] = out["output_conf"][0]
-            # with torch.no_grad():
-            #     relative_err = [relative_error(ext_est=ext_est,ext_gt=ext_gt) for ext_est, ext_gt in zip(out["output"], out["volume"])]#torch.norm(out["output"] - out["volume"],p=1,dim=-1) / (torch.norm(out["volume"],p=1,dim=-1) + 1e-6)
-            #     relative_err_tot += torch.tensor(relative_err).mean()
-            #     relative_mass_err = [relative_mass_error(ext_est=ext_est,ext_gt=ext_gt) for ext_est, ext_gt in zip(out["output"], out["volume"])]#(torch.norm(out["output"],p=1,dim=-1) - torch.norm(out["volume"],p=1,dim=-1)) / (torch.norm(out["volume"],p=1,dim=-1) + 1e-6)
-            #     relative_mass_err_tot += torch.tensor(relative_mass_err).mean()
-
-            est_vol = torch.zeros((volume.extinctions.numel(),out["output"][0].shape[-1]), device=volume.device)
-            est_vol[out['query_indices'][0],:] = out["output"][0].squeeze()
-            est_vol = torch.permute(est_vol.reshape((*volume.extinctions.shape[2:],-1)),(3,0,1,2))
-            est_vol_list.append(est_vol)
             if out["output"][0].shape[-1]==1:
-                cloud_out = est_vol
+                conf_vol = None
+                mask_conf = masks[0]
             else:
-                cloud_out,_ ,_ = get_pred_and_conf_from_discrete(out["output"], cfg.cross_entropy.min,
-                                                                               cfg.cross_entropy.max,
-                                                                               cfg.cross_entropy.bins,
-                                                                               pred_type=cfg.ct_net.pred_type,
-                                                                               )
-            cloud_out_list.append(cloud_out[0])
+                out["output"], out["output_conf"], probs = get_pred_and_conf_from_discrete(out["output"],
+                                                                                    cfg.cross_entropy.min,
+                                                                                    cfg.cross_entropy.max,
+                                                                                    cfg.cross_entropy.bins,
+                                                                                    pred_type=cfg.ct_net.pred_type,
+                                                                                    conf_type=cfg.ct_net.conf_type,
+                                                                                    prob_gain=cfg.ct_net.prob_gain)
+                conf_vol = torch.zeros(volume.extinctions.numel(), device=volume.device)
+                conf_vol[out['query_indices'][0]] = out["output_conf"][0]
+                conf_vol = conf_vol.reshape(volume.extinctions.shape[2:]).to(device=masks[0].device)
+                mask_conf = masks[0] # * (conf_vol < 0.2) #* (conf_vol < 0.8)
+            with torch.no_grad():
+                relative_err = [relative_error(ext_est=ext_est,ext_gt=ext_gt) for ext_est, ext_gt in zip(out["output"], out["volume"])]#torch.norm(out["output"] - out["volume"],p=1,dim=-1) / (torch.norm(out["volume"],p=1,dim=-1) + 1e-6)
+                relative_err_tot += torch.tensor(relative_err).mean()
+                relative_mass_err = [relative_mass_error(ext_est=ext_est,ext_gt=ext_gt) for ext_est, ext_gt in zip(out["output"], out["volume"])]#(torch.norm(out["output"],p=1,dim=-1) - torch.norm(out["volume"],p=1,dim=-1)) / (torch.norm(out["volume"],p=1,dim=-1) + 1e-6)
+                relative_mass_err_tot += torch.tensor(relative_mass_err).mean()
+            est_vol = torch.zeros(volume.extinctions.numel(), device=volume.device)
+            est_vol[out['query_indices'][0]] = out["output"][0].squeeze()
+            est_vol = est_vol.reshape(volume.extinctions.shape[2:])
 
-            # gt_vol = torch.zeros(volume.extinctions.numel(), device=volume.device)
-            # gt_vol[out['query_indices'][0]] = out["volume"][0].squeeze()
-            # gt_vol = gt_vol.reshape(volume.extinctions.shape[2:])
-            gt_vol_list.append(out["volume"][0].squeeze())
-            query_indices_list.append(out['query_indices'][0])
+            mask_conf = mask_conf #* (est_vol > 1).to(device=mask_conf.device)
+
+            # gt_vol = extinction[0]
+            # gt_mask = gt_vol>0
+            # M = (masks[0].detach().cpu().numpy() + gt_mask).astype(bool)
+            # if conf_vol is not None:
+            #     plt.scatter(gt_vol[M].ravel(), est_vol[M].ravel().detach().cpu(),
+            #                 c=conf_vol[M].ravel().cpu().detach())
+            # else:
+            #     plt.scatter(gt_vol[M].ravel(), est_vol[M].ravel().detach().cpu())
+            # plt.colorbar()
+            # plt.plot([0, gt_vol[M].ravel().max()], [0, gt_vol[M].ravel().max()], 'r')
+            # plt.xlabel('gt')
+            # plt.ylabel('est')
+            # plt.axis('square')
+            # plt.show()
+            # if conf_vol is not None:
+            #     plt.scatter(np.abs(gt_vol[M].ravel() - est_vol[M].ravel().cpu().detach().numpy()),
+            #                 conf_vol[M].ravel().cpu().detach())
+            #     plt.xlabel('|gt-est|')
+            #     plt.ylabel('confidence')
+            #     plt.show()
+
+            print(mask_conf.sum())
+            images = images.cpu().numpy()
+            est_vol_list.append(est_vol)
+            masks_conf.append(mask_conf)
+            images_list.append(images)
+
+            # if mask_conf.sum()>5000:
+            #     print('skip')
+            #     continue
+
 
             # print(est_vol[extinction[0]>0].mean().item())
-            if len(est_vol_list) == cfg.global_fusion.n_clouds:
-                est_vol_list = global_fusion(torch.stack(est_vol_list))
-                global_est_vol_list = [ext_est.squeeze().flatten()[query_indices] + cloud_out for
-                        ext_est, cloud_out, query_indices in zip(est_vol_list, cloud_out_list, query_indices_list)]
-                loss = [err(ext_est.squeeze(), ext_gt.squeeze()) / (torch.norm(ext_gt.squeeze()) + 1e-2) for
-                        ext_est, ext_gt in zip(global_est_vol_list, gt_vol_list)]
-                loss = torch.mean(torch.stack(loss))
-                loss.backward()
-                with torch.no_grad():
-                    relative_err = torch.mean(torch.stack([relative_error(ext_est=ext_est,ext_gt=ext_gt) for ext_est, ext_gt in zip(global_est_vol_list, gt_vol_list)]))
-                    relative_mass_err = torch.mean(torch.stack([relative_mass_error(ext_est=ext_est,ext_gt=ext_gt) for ext_est, ext_gt in zip(global_est_vol_list, gt_vol_list)]))
+            if len(est_vol_list) == cfg.shdom.n_clouds:
+                loss = diff_renderer_at3d.parallel_render(est_vol_list, masks_conf, images_list)
 
+                # torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.optimizer.clip)
+                if cfg.optimizer.loss_thr<diff_renderer_at3d.loss:
+                    print("Images are too inconsistent, skip gradient update for stability")
+                    continue
+                loss.backward()
+                skip=False
+                for param in model.decoder.parameters():
+                    if param.requires_grad and not torch.all(torch.isfinite(param.grad)):
+                        skip = True
+                        continue
+                if skip:
+                    print("invalid gradients")
+                    est_vol_list = []
+                    masks_conf = []
+                    images_list = []
+                    continue
                 # Take the training step.
                 iteration += 1
                 optimizer.step()
-
+                # torch.nn.utils.clip_grad_norm_(model.parameters(), 10)
 
                 # Update stats with the current metrics.
+                relative_err_tot /= len(est_vol_list)
+                relative_mass_err_tot /= len(est_vol_list)
                 stats.update(
-                    {"loss": float(loss), "relative_error": float(relative_err), "mass_error": float(relative_mass_err),  "lr":lr_scheduler.get_last_lr()[0],#optimizer.param_groups[0]['lr'],#lr_scheduler.get_last_lr()[0]
+                    {"loss": float(loss), "relative_error": float(relative_err_tot), "mass_error": float(relative_mass_err_tot),  "lr":lr_scheduler.get_last_lr()[0],#optimizer.param_groups[0]['lr'],#lr_scheduler.get_last_lr()[0]
                      "max_memory": float(round(torch.cuda.max_memory_allocated(device=device)/1e6))},
                     stat_set="train",
                 )
@@ -291,14 +325,12 @@ def main(cfg: DictConfig):
                         writer._dataset = 'train'
                         writer.monitor_loss(loss.item())
                         writer.monitor_scatterer_error(relative_mass_err_tot, relative_err_tot)
-                        # for ind in range(len(out["output"])):
-                        #     writer.monitor_scatter_plot(out["output"][ind], out["volume"][ind],ind=ind)
-                            # writer.monitor_images(diff_renderer_shdom.gt_images,np.array(diff_renderer_shdom.images))
+                        for ind in range(len(out["output"])):
+                            writer.monitor_scatter_plot(out["output"][ind], out["volume"][ind],ind=ind)
+                            writer.monitor_images(diff_renderer_at3d.gt_images,np.array(diff_renderer_at3d.images))
                 est_vol_list = []
-                cloud_out_list = []
-                gt_vol_list = []
-                query_indices_list = []
-
+                masks_conf = []
+                images_list = []
                 relative_err_tot = 0
                 relative_mass_err_tot = 0
             # with torch.cuda.device(device=device):
@@ -307,6 +339,7 @@ def main(cfg: DictConfig):
             # for mode in range(2)
                 if iteration % cfg.validation_iter_interval == 0 and iteration > 0:
                     optimizer.zero_grad()
+                    del images
                     loss_val = 0
                     relative_err= 0
                     relative_mass_err = 0
@@ -335,25 +368,18 @@ def main(cfg: DictConfig):
                                 masks
                             )
                             if val_out["output"][0].shape[-1] > 1:
-                                val_cloud_out = get_pred_from_discrete(val_out["output"], cfg.cross_entropy.min,
-                                                                  cfg.cross_entropy.max, cfg.cross_entropy.bins,
-                                                                       pred_type=cfg.ct_net.pred_type)
-                            val_global = torch.zeros((val_volume.extinctions.numel(), val_out["output"][0].shape[-1]),
-                                                  device=volume.device)
-                            val_global[val_out['query_indices'][0]] = val_out["output"][0].squeeze()
-                            val_global = torch.permute(val_global.reshape((*volume.extinctions.shape[2:], -1)), (3, 0, 1, 2))
-                            val_global = global_fusion(val_global)
-                            est_vols = torch.zeros(torch.squeeze(val_volume.extinctions,1).shape, device=val_volume.device)
+                                val_out["output"] = get_pred_from_discrete(val_out["output"], cfg.cross_entropy.min,
+                                                                  cfg.cross_entropy.max, cfg.cross_entropy.bins)
 
+                            est_vols = torch.zeros(torch.squeeze(val_volume.extinctions,1).shape, device=val_volume.device)
+                            if cfg.ct_net.use_neighbours:
+                                val_out["output"] = [ext_est.reshape(-1, 3, 3, 3)[:, 1, 1, 1].unsqueeze(-1) for ext_est in val_out["output"]]
                             if val_out['query_indices'] is None:
-                                for i, (out_vol, m) in enumerate(zip(val_cloud_out, masks)):
+                                for i, (out_vol, m) in enumerate(zip(val_out["output"], masks)):
                                     est_vols[i][m.squeeze(0)] = out_vol.squeeze(1)
-                                    est_vols[i][m.squeeze(0)] += val_global.squeeze()[m.squeeze(0)]
                             else:
-                                for est_vol, out_vol, m in zip(est_vols, val_cloud_out, val_out['query_indices']):
+                                for est_vol, out_vol, m in zip(est_vols, val_out["output"], val_out['query_indices']):
                                     est_vol.reshape(-1)[m] = out_vol.reshape(-1)  # .reshape(m.shape)[m]
-                                    val_global.squeeze()[est_vol.squeeze()<0.5]=0
-                                    est_vol.reshape(-1)[m] += val_global.reshape(-1)[m]
                             assert len(est_vols)==1 ##TODO support validation with batch larger than 1
                             gt_vol = val_volume.extinctions[0].squeeze()
                             est_vol = est_vols.squeeze()
@@ -409,7 +435,6 @@ def main(cfg: DictConfig):
                     print(f"Storing checkpoint {curr_checkpoint_path}.")
                     data_to_store = {
                         "model": model.state_dict(),
-                        "global_fusion": global_fusion.state_dict(),
                     }
                     torch.save(data_to_store, curr_checkpoint_path)
 

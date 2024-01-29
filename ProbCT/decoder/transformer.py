@@ -14,7 +14,7 @@ from torch import nn, Tensor
 import pdb
 import torch.nn as nn
 from itertools import repeat
-from LearnedCloudCT.ProbCT.mlp_function import MLPWithInputSkips2
+from ProbCT.mlp_function import MLPWithInputSkips2
 
 import os
 os.environ['CUDA_LAUNCH_BLOCKING'] = "1"

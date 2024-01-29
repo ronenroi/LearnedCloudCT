@@ -15,7 +15,7 @@
 
 import torch
 from torch import nn
-from LearnedCloudCT.ProbCT.mlp_function import MLPWithInputSkips2
+from ProbCT.mlp_function import MLPWithInputSkips2
 import torch.nn.functional as F
 from .LoRA import Linear as LoRALinear
 def _xavier_init(linear):

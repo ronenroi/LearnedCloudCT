@@ -22,7 +22,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 import torchvision
-from LearnedCloudCT.ProbCT.util import nn_util as util
+from ProbCT.util import nn_util as util
 from .roi_align import ROIAlign
 from .MyResNetFPN import resnet_fpn_backbone
 
@@ -155,8 +155,7 @@ class Backbone(nn.Module):
                         init_weights = torchvision.models.swin_transformer.Swin_V2_B_Weights.IMAGENET1K_V1
                     self.latent_size = [128, 128 + 256, 128 + 256 + 512, 128 + 256 + 512 + 1024][num_layers - 1]
 
-                self.model = getattr(torchvision.models, backbone)\
-                    (weights=init_weights)
+                self.model = getattr(torchvision.models, backbone)(weights=init_weights)
                 self.model=self.model.features
                 conv_in = self.model[0][0]
 

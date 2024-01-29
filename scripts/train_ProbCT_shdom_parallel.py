@@ -1,4 +1,4 @@
-# This file contains the main script for VIP-CT training.
+# This file contains the main script for VIP-CT and ProbCT training.
 # You are very welcome to use this code. For this, clearly acknowledge
 # the source of this code, and cite the paper described in the readme file:
 # Roi Ronen, Vadim Holodovsky and Yoav. Y. Schechner, "Variable Imaging Projection Cloud Scattering Tomography",
@@ -19,13 +19,13 @@ import hydra
 import numpy as np
 from omegaconf import DictConfig
 
-from LearnedCloudCT.ProbCT.CTnet import CTnet
-from LearnedCloudCT.ProbCT.CTnetV2 import *
-from LearnedCloudCT.ProbCT.util.stats import Stats
-from LearnedCloudCT.ProbCT.util.visualization import SummaryWriter
-from LearnedCloudCT.renderer.shdom_renderer import DiffRendererSHDOM
-from LearnedCloudCT.scene.cameras import PerspectiveCameras
-from LearnedCloudCT.scene.volumes import Volumes
+from ProbCT.CTnet import CTnet
+from ProbCT.CTnetV2 import *
+from ProbCT.util.stats import Stats
+from ProbCT.util.visualization import SummaryWriter
+from renderer.shdom_renderer import DiffRendererSHDOM
+from scene.cameras import PerspectiveCameras
+from scene.volumes import Volumes
 from dataloader.dataset import get_cloud_datasets, trivial_collate
 from metrics.test_errors import *
 from ProbCT import *

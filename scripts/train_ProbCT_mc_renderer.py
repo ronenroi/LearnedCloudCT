@@ -1,4 +1,4 @@
-# This file contains the main script for VIP-CT training.
+# This file contains the main script for VIP-CT and ProbCT training.
 # You are very welcome to use this code. For this, clearly acknowledge
 # the source of this code, and cite the paper described in the readme file:
 # Roi Ronen, Vadim Holodovsky and Yoav. Y. Schechner, "Variable Imaging Projection Cloud Scattering Tomography",
@@ -25,18 +25,17 @@ import numpy as np
 import torch
 
 from dataloader.dataset import get_cloud_datasets, trivial_collate
-from LearnedCloudCT.ProbCT.util.visualization import SummaryWriter
-from LearnedCloudCT.ProbCT.CTnetV2 import *
-from dataloader.airmspi_dataset import get_real_world_airmspi_datasets_ft
-from LearnedCloudCT.ProbCT.CTnet import CTnet
-from LearnedCloudCT.ProbCT.util.stats import Stats
+from ProbCT.util.visualization import SummaryWriter
+from ProbCT.CTnetV2 import *
+from ProbCT.CTnet import CTnet
+from ProbCT.util.stats import Stats
 from omegaconf import DictConfig
 from metrics.test_errors import *
 from metrics.losses import *
 from ProbCT import *
-from LearnedCloudCT.scene.volumes import Volumes
-from LearnedCloudCT.scene.cameras import PerspectiveCameras
-from LearnedCloudCT.renderer.shdom_renderer import DiffRendererSHDOM_Airmspi, LossSHDOM
+from scene.volumes import Volumes
+from scene.cameras import PerspectiveCameras
+from renderer.mc_renderer import DiffRendererMC
 # from shdom.shdom_nn import *
 import matplotlib.pyplot as plt
 
@@ -54,7 +53,7 @@ CE = torch.nn.CrossEntropyLoss(reduction='mean')
 #     criterion = criterion.to(device)
 #     return criterion
 
-@hydra.main(config_path=CONFIG_DIR, config_name="vipctV2_train_airmspi_ft")
+@hydra.main(config_path=CONFIG_DIR, config_name="vipctV2_shdom_train")
 def main(cfg: DictConfig):
 
     # Set the relevant seeds for reproducibility.
@@ -77,7 +76,7 @@ def main(cfg: DictConfig):
     # Load the training/validation data.
     current_dir = os.path.dirname(os.path.realpath(__file__))
     # DATA_DIR = os.path.join(current_dir, "data")
-    train_dataset = get_real_world_airmspi_datasets_ft(
+    train_dataset, val_dataset = get_cloud_datasets(
         cfg=cfg
     )
 
@@ -86,6 +85,7 @@ def main(cfg: DictConfig):
         model = CTnet(cfg=cfg, n_cam=cfg.data.n_cam)
     else:
         model = CTnetV2(cfg=cfg, n_cam=cfg.data.n_cam)
+
     # Move the model to the relevant device.
     model.to(device)
     # Init stats to None before loading.
@@ -153,13 +153,13 @@ def main(cfg: DictConfig):
         collate_fn=trivial_collate,
     )
 
-    # # The validation dataloader is just an endless stream of random samples.
-    # val_dataloader = torch.utils.data.DataLoader(
-    #     val_dataset,
-    #     batch_size=1,
-    #     num_workers=4,
-    #     collate_fn=trivial_collate,
-    # )
+    # The validation dataloader is just an endless stream of random samples.
+    val_dataloader = torch.utils.data.DataLoader(
+        val_dataset,
+        batch_size=1,
+        num_workers=4,
+        collate_fn=trivial_collate,
+    )
     err = torch.nn.MSELoss()
     if cfg.optimizer.ce_weight_zero:
         w = torch.ones(cfg.cross_entropy.bins, device=device)
@@ -169,28 +169,24 @@ def main(cfg: DictConfig):
     # err = torch.nn.L1Loss(reduction='sum')
     # Set the model to the training mode.
     model.train().float()
-    diff_renderer_shdom = DiffRendererSHDOM_Airmspi(cfg=cfg)
+    diff_renderer_shdom = DiffRendererMC(cfg=cfg,device=device)
 
     if cfg.ct_net.stop_encoder_grad:
         for name, param in model.named_parameters():
             # if 'decoder.decoder.2.mlp.7' in name or 'decoder.decoder.3' in name:
             if 'decoder' in name:
+
                 param.requires_grad = True
             else:
                 param.requires_grad = False
-                # print(name)
-        model._image_encoder.eval()
-        model.mlp_cam_center.eval()
-        model.mlp_xyz.eval()
-
-
     # for name, param in model.named_parameters():
     #     if param.requires_grad:
     #         print(name)
     # Run the main training loop.
     iteration = 0
 
-
+    if writer:
+        val_scatter_ind = np.random.permutation(len(val_dataloader))[:5]
     for epoch in range(start_epoch, cfg.optimizer.max_epochs):
         for i, batch in enumerate(train_dataloader):
             # lr_scheduler(None)
@@ -200,17 +196,20 @@ def main(cfg: DictConfig):
                 # Adjust the learning rate.
                 lr_scheduler.step()
 
-            images, grid, mapping, centers, masks, shdom_proj_list = batch#[0]#.values()
-            volume = Volumes(torch.unsqueeze(torch.tensor(masks, device=device).float(), 1), grid)
+            images, extinction, grid, image_sizes, projection_matrix, camera_center, masks = batch  # [0]#.values()
+            volume = Volumes(torch.unsqueeze(torch.tensor(extinction, device=device).float(), 1), grid)
+
+            if model.mask_type == 'gt_mask':
+                masks = volume.extinctions[0] > volume._ext_thr
             masks = [torch.tensor(mask) if mask is not None else mask for mask in masks]
             if torch.sum(torch.tensor([(mask).sum() if mask is not None else mask for mask in masks])) == 0:
                 print('Empty mask skip')
                 continue
             images = torch.tensor(np.array(images), device=device).float()
-            cameras = AirMSPICameras(mapping=torch.tensor(mapping).float(),
-                                     centers=torch.tensor(centers).float(),
-                                     device=device)
-
+            cameras = PerspectiveCameras(image_size=image_sizes,
+                                         P=torch.tensor(projection_matrix, device=device).float(),
+                                         camera_center=torch.tensor(camera_center, device=device).float(),
+                                         device=device)
 
             optimizer.zero_grad()
 
@@ -221,16 +220,15 @@ def main(cfg: DictConfig):
                 volume,
                 masks
             )
-            if out["output"][0].shape[-1] == 1:
-                conf_vol = None
+            if cfg.version == 'V1':
                 mask_conf = masks[0]
             else:
-                out["output"], out["output_conf"], _ = get_pred_and_conf_from_discrete(out["output"],
-                                                                                    cfg.cross_entropy.min,
-                                                                                    cfg.cross_entropy.max,
-                                                                                    cfg.cross_entropy.bins,
-                                                                                    pred_type=cfg.ct_net.pred_type,
-                                                                                    conf_type=cfg.ct_net.conf_type)
+                out["output"], out["output_conf"] = get_pred_and_conf_from_discrete(out["output"],
+                                                                                        cfg.cross_entropy.min,
+                                                                                        cfg.cross_entropy.max,
+                                                                                        cfg.cross_entropy.bins,
+                                                                                        pred_type=cfg.ct_net.pred_type,
+                                                                                        conf_type=cfg.ct_net.conf_type)
                 conf_vol = torch.zeros(volume.extinctions.numel(), device=volume.device)
                 conf_vol[out['query_indices'][0]] = out["output_conf"][0]
                 conf_vol = conf_vol.reshape(volume.extinctions.shape[2:]).to(device=masks[0].device)
@@ -240,32 +238,29 @@ def main(cfg: DictConfig):
             est_vol[out['query_indices'][0]] = out["output"][0].squeeze()
             est_vol = est_vol.reshape(volume.extinctions.shape[2:])
 
-            # if mask_conf.sum()>5000:
+
+            # if mask_conf.sum()>2000:
             #     print('skip')
             #     continue
             print(mask_conf.sum())
             images = images.cpu().numpy()
             # print(est_vol[extinction[0]>0].mean().item())
-            loss = diff_renderer_shdom.render(est_vol, mask_conf, volume, images,shdom_proj_list)
-            # gt_vol = extinction[0]
-            # M = masks[0].detach().cpu()
-            # if conf_vol is not None:
-            #     plt.scatter(gt_vol[M].ravel(), est_vol[M].ravel().detach().cpu(),
-            #             c=conf_vol[M].ravel().cpu().detach())
-            # else:
-            #     plt.scatter(gt_vol[M].ravel(), est_vol[M].ravel().detach().cpu())
-            # plt.colorbar()
-            # plt.plot([0, gt_vol[M].ravel().max()], [0, gt_vol[M].ravel().max()], 'r')
-            # plt.xlabel('gt')
-            # plt.ylabel('est')
-            # plt.axis('square')
-            # plt.show()
-            # if conf_vol is not None:
-            #     plt.scatter(np.abs(gt_vol[M].ravel() - est_vol[M].ravel().cpu().detach().numpy()),
-            #                 conf_vol[M].ravel().cpu().detach())
-            #     plt.xlabel('|gt-est|')
-            #     plt.ylabel('confidence')
-            #     plt.show()
+            loss = diff_renderer_shdom.render(est_vol, mask_conf, volume, images)
+            gt_vol = extinction[0]
+            M = masks[0].detach().cpu()
+            plt.scatter(gt_vol[M].ravel(), est_vol[M].ravel().detach().cpu(),
+                        c=conf_vol[M].ravel().cpu().detach())
+            plt.colorbar()
+            plt.plot([0, gt_vol[M].ravel().max()], [0, gt_vol[M].ravel().max()], 'r')
+            plt.xlabel('gt')
+            plt.ylabel('est')
+            plt.axis('square')
+            plt.show()
+            plt.scatter(np.abs(gt_vol[M].ravel() - est_vol[M].ravel().cpu().detach().numpy()),
+                        conf_vol[M].ravel().cpu().detach())
+            plt.xlabel('|gt-est|')
+            plt.ylabel('confidence')
+            plt.show()
 
             # loss_shdom(est_vol , diff_renderer_shdom)
 
@@ -301,7 +296,7 @@ def main(cfg: DictConfig):
                     writer.monitor_scatterer_error(relative_mass_err, relative_err)
                     for ind in range(len(out["output"])):
                         writer.monitor_scatter_plot(out["output"][ind], out["volume"][ind],ind=ind)
-                        writer.monitor_images(diff_renderer_shdom.gt_images,np.array(diff_renderer_shdom.images))
+                        writer.monitor_images(diff_renderer_shdom.gt_images[0],np.array(diff_renderer_shdom.images))
 
             del images
             # with torch.cuda.device(device=device):
@@ -335,8 +330,7 @@ def main(cfg: DictConfig):
                             val_volume,
                             masks
                         )
-                        if cfg.version == 'V2':
-                            val_out["output"] = get_pred_from_discrete(val_out["output"], cfg.cross_entropy.min,
+                        val_out["output"] = get_pred_from_discrete(val_out["output"], cfg.cross_entropy.min,
                                                               cfg.cross_entropy.max, cfg.cross_entropy.bins)
 
                         est_vols = torch.zeros(torch.squeeze(val_volume.extinctions,1).shape, device=val_volume.device)

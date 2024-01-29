@@ -1,4 +1,4 @@
-# This file contains util routines for VIP-CT.
+# This file contains util routines for VIP-CT and ProbCT.
 # It is based on PyTorch3D source code ('https://github.com/facebookresearch/pytorch3d') by FAIR
 # Copyright (c) Facebook, Inc. and its affiliates.
 # All rights reserved.

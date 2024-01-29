@@ -1,4 +1,4 @@
-# This file contains the main script for VIP-CT training.
+# This file contains the main script for VIP-CT and ProbCT training.
 # You are very welcome to use this code. For this, clearly acknowledge
 # the source of this code, and cite the paper described in the readme file:
 # Roi Ronen, Vadim Holodovsky and Yoav. Y. Schechner, "Variable Imaging Projection Cloud Scattering Tomography",
@@ -25,17 +25,17 @@ import numpy as np
 import torch
 
 from dataloader.dataset import get_cloud_datasets, trivial_collate
-from LearnedCloudCT.ProbCT.util.visualization import SummaryWriter
-from LearnedCloudCT.ProbCT.CTnetV2 import *
-from LearnedCloudCT.ProbCT.CTnet import CTnet
-from LearnedCloudCT.ProbCT.util.stats import Stats
+from ProbCT.util.visualization import SummaryWriter
+from ProbCT.CTnetV2 import *
+from ProbCT.CTnet import CTnet
+from ProbCT.util.stats import Stats
 from omegaconf import DictConfig
 from metrics.test_errors import *
 from metrics.losses import *
 from ProbCT import *
-from LearnedCloudCT.scene.volumes import Volumes
-from LearnedCloudCT.scene.cameras import PerspectiveCameras
-from LearnedCloudCT.renderer.at3d_renderer import DiffRendererAT3D
+from scene.volumes import Volumes
+from scene.cameras import PerspectiveCameras
+from renderer.shdom_renderer import DiffRendererSHDOM, LossSHDOM
 # from shdom.shdom_nn import *
 import matplotlib.pyplot as plt
 
@@ -105,8 +105,8 @@ def main(cfg: DictConfig):
     # Resume training if requested.
     if cfg.resume and os.path.isfile(checkpoint_resume_path):
         print(f"Resuming from checkpoint {checkpoint_resume_path}.")
-        loaded_data = torch.load(checkpoint_resume_path,map_location=device)
-        model.load_state_dict(loaded_data["model"])
+        loaded_data = torch.load(checkpoint_resume_path, map_location=device)
+        model.load_state_dict(loaded_data["model"], strict=False)
         # stats = pickle.loads(loaded_data["stats"])
         # print(f"   => resuming from epoch {stats.epoch}.")
         # optimizer_state_dict = loaded_data["optimizer"]
@@ -168,12 +168,15 @@ def main(cfg: DictConfig):
     # err = torch.nn.L1Loss(reduction='sum')
     # Set the model to the training mode.
     model.train().float()
-    diff_renderer_shdom = DiffRendererAT3D(cfg=cfg)
+    diff_renderer_shdom = DiffRendererSHDOM(cfg=cfg)
 
     if cfg.ct_net.stop_encoder_grad:
         for name, param in model.named_parameters():
             # if 'decoder.decoder.2.mlp.7' in name or 'decoder.decoder.3' in name:
-            if 'decoder' in name:
+            # if 'decoder' in name and not 'mask_decoder' in name:
+            if 'lora' in name:
+            # if '.bn' in name:
+
                 param.requires_grad = True
             else:
                 param.requires_grad = False
@@ -189,6 +192,10 @@ def main(cfg: DictConfig):
 
     if writer:
         val_scatter_ind = np.random.permutation(len(val_dataloader))[:5]
+    est_vols = []
+    volumes = []
+    mask_list = []
+    images_list = []
     for epoch in range(start_epoch, cfg.optimizer.max_epochs):
         for i, batch in enumerate(train_dataloader):
             # lr_scheduler(None)
@@ -198,7 +205,7 @@ def main(cfg: DictConfig):
                 # Adjust the learning rate.
                 lr_scheduler.step()
 
-            images, extinction, grid, image_sizes, projection_matrix, camera_center, masks = batch#[0]#.values()
+            images, extinction, grid, image_sizes, projection_matrix, camera_center, masks, cloud_path = batch#[0]#.values()
             volume = Volumes(torch.unsqueeze(torch.tensor(extinction, device=device).float(),1), grid)
 
             if model.mask_type == 'gt_mask':
@@ -247,7 +254,7 @@ def main(cfg: DictConfig):
             print(mask_conf.sum())
             images = images.cpu().numpy()
             # print(est_vol[extinction[0]>0].mean().item())
-            loss = diff_renderer_shdom.render(est_vol, mask_conf, images)
+            loss = diff_renderer_shdom.render(est_vol, mask_conf, volume, images, cloud_index=cloud_path[0].split('cloud_results_')[-1].split('.pkl')[0])
             # gt_vol = extinction[0]
             # M = masks[0].detach().cpu()
             # if conf_vol is not None:
@@ -275,10 +282,11 @@ def main(cfg: DictConfig):
 
 
             # torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.optimizer.clip)
-            if cfg.optimizer.loss_thr<diff_renderer_shdom.loss:
+            if cfg.optimizer.loss_thr<loss:
                 print("Images are too inconsistent, skip gradient update for stability")
                 continue
             loss.backward()
+
             skip=False
             for param in model.decoder.parameters():
                 if param.requires_grad and not torch.all(torch.isfinite(param.grad)):
@@ -330,7 +338,7 @@ def main(cfg: DictConfig):
 
                 # val_batch = next(val_dataloader.__iter__())
 
-                    val_image, extinction, grid, image_sizes, projection_matrix, camera_center, masks = val_batch#[0]#.values()
+                    val_image, extinction, grid, image_sizes, projection_matrix, camera_center, masks,_ = val_batch#[0]#.values()
                     val_image = torch.tensor(val_image, device=device).float()
                     val_volume = Volumes(torch.unsqueeze(torch.tensor(extinction, device=device).float(), 1), grid)
                     val_camera = PerspectiveCameras(image_size=image_sizes,P=torch.tensor(projection_matrix, device=device).float(),

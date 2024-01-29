@@ -3,7 +3,7 @@ import os, glob
 import pickle
 import matplotlib.pyplot as plt
 import numpy as np
-from LearnedCloudCT.dataloader.noise import SatelliteNoise
+from dataloader.noise import SatelliteNoise
 import scipy.stats, scipy
 
 def func_p_beta(beta):

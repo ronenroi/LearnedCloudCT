@@ -1,4 +1,4 @@
-# This file contains the a script for VIP-CT feature sampling unitest.
+# This file contains the a script for VIP-CT and ProbCT feature sampling unitest.
 # You are very welcome to use this code. For this, clearly acknowledge
 # the source of this code, and cite the paper described in the readme file:
 # Roi Ronen, Vadim Holodovsky and Yoav. Y. Schechner, "Variable Imaging Projection Cloud Scattering Tomography",
@@ -15,7 +15,7 @@
 
 import pickle
 import matplotlib.pyplot as plt
-from LearnedCloudCT.scene.volumes import Volumes
+from scene.volumes import Volumes
 
 import numpy as np
 import torch

@@ -29,7 +29,7 @@ class SatelliteNoise(object):
             scale=self.DARK_NOISE_std
             ,  # The scale parameter controls the standard deviation of the normal distribution.
             size=electrons_number.shape
-        ).astype(np.int)
+        ).astype(int)
 
         electrons_number += DN_noise
 
@@ -42,7 +42,7 @@ class SatelliteNoise(object):
         #     scale=READ_NOISE_variance**0.5
         #     ,  # The scale parameter controls the standard deviation of the normal distribution.
         #     size=electrons_number.shape
-        # ).astype(np.int)
+        # ).astype(int)
         #
         # electrons_number += READ_noise
 
@@ -94,9 +94,9 @@ class SatelliteNoise(object):
             # ---------------- finish the noise ------------------------------------------------
             gray_scale = self._alpha * electrons_number
 
-            # For a sensor having a linear radiometric response, the conversion between pixel electrons to grayscale is by a fixxed ratio self._alpha
-            # Quantisize and cut overflow values.
-            gray_scale = np.round(gray_scale).astype(np.int)
+            # For a sensor having a linear radiometric response, the conversion between pixel electrons to grayscale is by a fixed ratio self._alpha
+            # Quantize and cut overflow values.
+            gray_scale = np.round(gray_scale).astype(int)
             gray_scale = np.clip(gray_scale, a_min=0, a_max=gray_level_bound)
             noisy_image = gray_scale/radiance_to_graylevel_scale
             noisy_images.append(noisy_image)

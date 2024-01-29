@@ -1,4 +1,4 @@
-# This file contains auxiliary routines for VIP-CT and ProbCT models.
+# This file contains auxiliary routines for ProbCT model.
 # You are very welcome to use this code. For this, clearly acknowledge
 # the source of this code, and cite our papers described in the readme file.
 #

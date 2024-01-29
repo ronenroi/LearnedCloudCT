@@ -1,4 +1,4 @@
-# This file contains the main script for VIP-CT training.
+# This file contains the main script for VIP-CT and ProbCT training.
 # You are very welcome to use this code. For this, clearly acknowledge
 # the source of this code, and cite the paper described in the readme file:
 # Roi Ronen, Vadim Holodovsky and Yoav. Y. Schechner, "Variable Imaging Projection Cloud Scattering Tomography",
@@ -22,22 +22,18 @@ import warnings
 # sys.path.insert(0, '/home/roironen/pyshdom-NN/projects')
 import hydra
 import numpy as np
-import torch
-
 from dataloader.dataset import get_cloud_datasets, trivial_collate
-from LearnedCloudCT.ProbCT.util.visualization import SummaryWriter
-from LearnedCloudCT.ProbCT.CTnetV2 import *
-from LearnedCloudCT.ProbCT.CTnet import CTnet
-from LearnedCloudCT.ProbCT.util.stats import Stats
+from dataloader.airmspi_dataset import get_airmspi_datasets
+
+from ProbCT.util.visualization import SummaryWriter
+from ProbCT.CTnetV2 import *
+from ProbCT.util.stats import Stats
 from omegaconf import DictConfig
 from metrics.test_errors import *
 from metrics.losses import *
 from ProbCT import *
-from LearnedCloudCT.scene.volumes import Volumes
-from LearnedCloudCT.scene.cameras import PerspectiveCameras
-from LearnedCloudCT.renderer.shdom_renderer import DiffRendererSHDOM, LossSHDOM
-# from shdom.shdom_nn import *
-import matplotlib.pyplot as plt
+from scene.volumes import Volumes
+from scene.cameras import PerspectiveCameras
 
 # relative_error = lambda ext_est, ext_gt, eps=1e-6 : torch.norm(ext_est.view(-1) - ext_gt.view(-1),p=1) / (torch.norm(ext_gt.view(-1),p=1) + eps)
 # mass_error = lambda ext_est, ext_gt, eps=1e-6 : (torch.norm(ext_gt.view(-1),p=1) - torch.norm(ext_est.view(-1),p=1)) / (torch.norm(ext_gt.view(-1),p=1) + eps)
@@ -53,7 +49,7 @@ CE = torch.nn.CrossEntropyLoss(reduction='mean')
 #     criterion = criterion.to(device)
 #     return criterion
 
-@hydra.main(config_path=CONFIG_DIR, config_name="vipctV2_shdom_train")
+@hydra.main(config_path=CONFIG_DIR, config_name="vipctV2_train_airmspi")
 def main(cfg: DictConfig):
 
     # Set the relevant seeds for reproducibility.
@@ -76,15 +72,18 @@ def main(cfg: DictConfig):
     # Load the training/validation data.
     current_dir = os.path.dirname(os.path.realpath(__file__))
     # DATA_DIR = os.path.join(current_dir, "data")
-    train_dataset, val_dataset = get_cloud_datasets(
-        cfg=cfg
-    )
+    if "AirMSPI" in cfg.data.dataset_name:
+        train_dataset, val_dataset = get_airmspi_datasets(
+            cfg=cfg
+        )
+    else:
+        train_dataset, val_dataset = get_cloud_datasets(
+            cfg=cfg
+        )
 
     # Initialize the CT model.
-    if cfg.version == 'V1':
-        model = CTnet(cfg=cfg, n_cam=cfg.data.n_cam)
-    else:
-        model = CTnetV2(cfg=cfg, n_cam=cfg.data.n_cam)
+    model = CTnetV2(cfg=cfg, n_cam=cfg.data.n_cam)
+
     # Move the model to the relevant device.
     model.to(device)
     # Init stats to None before loading.
@@ -96,7 +95,7 @@ def main(cfg: DictConfig):
     log_dir = os.getcwd()
     writer = SummaryWriter(log_dir)
     checkpoint_dir = os.path.join(log_dir, 'checkpoints')
-    checkpoint_resume_path = os.path.join(hydra.utils.get_original_cwd(), cfg.checkpoint_resume_path)
+    checkpoint_resume_path =  os.path.join(hydra.utils.get_original_cwd(), cfg.checkpoint_resume_path)
     if len(checkpoint_dir) > 0:
         # Make the root of the experiment directory.
         # checkpoint_dir = os.path.split(checkpoint_path)
@@ -106,11 +105,11 @@ def main(cfg: DictConfig):
     if cfg.resume and os.path.isfile(checkpoint_resume_path):
         print(f"Resuming from checkpoint {checkpoint_resume_path}.")
         loaded_data = torch.load(checkpoint_resume_path, map_location=device)
-        model.load_state_dict(loaded_data["model"], strict=False)
-        # stats = pickle.loads(loaded_data["stats"])
-        # print(f"   => resuming from epoch {stats.epoch}.")
-        # optimizer_state_dict = loaded_data["optimizer"]
-        # start_epoch = stats.epoch
+        model.load_state_dict(loaded_data["model"])
+        stats = pickle.loads(loaded_data["stats"])
+        print(f"   => resuming from epoch {stats.epoch}.")
+        optimizer_state_dict = loaded_data["optimizer"]
+        start_epoch = stats.epoch
 
     # Initialize the optimizer.
     optimizer = torch.optim.Adam(
@@ -160,65 +159,55 @@ def main(cfg: DictConfig):
         collate_fn=trivial_collate,
     )
     err = torch.nn.MSELoss()
-    if cfg.optimizer.ce_weight_zero:
+    if cfg.optimizer.ce_weight_zero>0:
         w = torch.ones(cfg.cross_entropy.bins, device=device)
-        w[0] /= 100
+        w[0] *= cfg.optimizer.ce_weight_zero
         CE.weight = w
 
     # err = torch.nn.L1Loss(reduction='sum')
     # Set the model to the training mode.
     model.train().float()
-    diff_renderer_shdom = DiffRendererSHDOM(cfg=cfg)
-
-    if cfg.ct_net.stop_encoder_grad:
-        for name, param in model.named_parameters():
-            # if 'decoder.decoder.2.mlp.7' in name or 'decoder.decoder.3' in name:
-            # if 'decoder' in name and not 'mask_decoder' in name:
-            if 'lora' in name:
-            # if '.bn' in name:
-
-                param.requires_grad = True
-            else:
-                param.requires_grad = False
-        if cfg.ct_net.encoder_mode == 'eval':
-            model._image_encoder.eval()
-            model.mlp_cam_center.eval()
-            model.mlp_xyz.eval()
     # for name, param in model.named_parameters():
     #     if param.requires_grad:
     #         print(name)
     # Run the main training loop.
-    iteration = 0
+    iteration = -1
 
     if writer:
         val_scatter_ind = np.random.permutation(len(val_dataloader))[:5]
-    est_vols = []
-    volumes = []
-    mask_list = []
-    images_list = []
     for epoch in range(start_epoch, cfg.optimizer.max_epochs):
         for i, batch in enumerate(train_dataloader):
+            iteration += 1
             # lr_scheduler(None)
             if iteration % (cfg.stats_print_interval) == 0 and iteration > 0:
                 stats.new_epoch()  # Init a new epoch.
             if iteration in cfg.optimizer.iter_steps:
                 # Adjust the learning rate.
                 lr_scheduler.step()
+            if "AirMSPI" in cfg.data.dataset_name:
+                images, extinction, grid, mapping, centers, masks = batch#[0]#.values()
+                if images[0] is None:
+                    continue
+                cameras = AirMSPICameras(mapping=torch.tensor(mapping).float(),
+                                         centers=torch.tensor(centers).float(),
+                                             device=device)
 
-            images, extinction, grid, image_sizes, projection_matrix, camera_center, masks, cloud_path = batch#[0]#.values()
+            else:
+                images, extinction, grid, image_sizes, projection_matrix, camera_center, masks = batch#[0]#.values()
+                cameras = PerspectiveCameras(image_size=image_sizes,
+                                             P=torch.tensor(projection_matrix, device=device).float(),
+                                             camera_center=torch.tensor(camera_center, device=device).float(),
+                                             device=device)
+
+
+            images = torch.tensor(np.array(images), device=device).float()
             volume = Volumes(torch.unsqueeze(torch.tensor(extinction, device=device).float(),1), grid)
 
-            if model.mask_type == 'gt_mask':
-                masks = volume.extinctions[0] > volume._ext_thr
             masks = [torch.tensor(mask) if mask is not None else mask for mask in masks]
+            if model.mask_type == 'gt_mask':
+                masks = volume.extinctions > volume._ext_thr
             if torch.sum(torch.tensor([(mask).sum() if mask is not None else mask for mask in masks])) == 0:
-                print('Empty mask skip')
                 continue
-            images = torch.tensor(np.array(images), device=device).float()
-            cameras = PerspectiveCameras(image_size=image_sizes,P=torch.tensor(projection_matrix, device=device).float(),
-                                         camera_center= torch.tensor(camera_center, device=device).float(), device=device)
-
-
             optimizer.zero_grad()
 
             # Run the forward pass of the model.
@@ -228,83 +217,51 @@ def main(cfg: DictConfig):
                 volume,
                 masks
             )
-            if out["output"][0].shape[-1]==1:
-                conf_vol = None
-                mask_conf = masks[0]
+
+            # The loss is a sum of coarse and fine MSEs
+            if cfg.optimizer.loss == 'L2_relative_error_new':
+                loss = [err(ext_est.squeeze(),ext_gt.squeeze())/(torch.norm(ext_gt.squeeze())**2 / (ext_gt.shape[0]+1e-2) / + 1e-2) for ext_est, ext_gt in zip(out["output"], out["volume"])]
+            elif cfg.optimizer.loss == 'L2_relative_error':
+                loss = [err(ext_est.squeeze(),ext_gt.squeeze())/(torch.norm(ext_gt.squeeze())+ 1e-2) for ext_est, ext_gt in zip(out["output"], out["volume"])]
+            elif cfg.optimizer.loss == 'L2':
+                loss = [err(ext_est.squeeze(),ext_gt.squeeze()) for ext_est, ext_gt in zip(out["output"], out["volume"])]
+            elif cfg.optimizer.loss == 'L2_Weighted':
+                weights = torch.ones(27,device=device)
+                weights[:13] /= 5
+                weights[14:] /= 5
+                loss = [err(ext_est.squeeze()*weights,ext_gt.squeeze()*weights) for ext_est, ext_gt in zip(out["output"], out["volume"])]
+            elif cfg.optimizer.loss == 'L1_relative_error':
+                loss = [relative_error(ext_est=ext_est,ext_gt=ext_gt) for ext_est, ext_gt in zip(out["output"], out["volume"])]
+            elif cfg.optimizer.loss == 'CE':
+                loss = [CE(ext_est,
+                           to_discrete(ext_gt, cfg.cross_entropy.min, cfg.cross_entropy.max, cfg.cross_entropy.bins))
+                                                             for ext_est, ext_gt in zip(out["output"], out["volume"])]
+
             else:
-                out["output"], out["output_conf"], probs = get_pred_and_conf_from_discrete(out["output"],
-                                                                                    cfg.cross_entropy.min,
-                                                                                    cfg.cross_entropy.max,
-                                                                                    cfg.cross_entropy.bins,
-                                                                                    pred_type=cfg.ct_net.pred_type,
-                                                                                    conf_type=cfg.ct_net.conf_type,
-                                                                                    prob_gain=cfg.ct_net.prob_gain)
-                conf_vol = torch.zeros(volume.extinctions.numel(), device=volume.device)
-                conf_vol[out['query_indices'][0]] = out["output_conf"][0]
-                conf_vol = conf_vol.reshape(volume.extinctions.shape[2:]).to(device=masks[0].device)
-                mask_conf = masks[0]  # * (conf_vol > 0.2) * (conf_vol < 0.8)
-
-            est_vol = torch.zeros(volume.extinctions.numel(), device=volume.device)
-            est_vol[out['query_indices'][0]] = out["output"][0].squeeze()
-            est_vol = est_vol.reshape(volume.extinctions.shape[2:])
-
-            # if mask_conf.sum()>5000:
-            #     print('skip')
-            #     continue
-            print(mask_conf.sum())
-            images = images.cpu().numpy()
-            # print(est_vol[extinction[0]>0].mean().item())
-            loss = diff_renderer_shdom.render(est_vol, mask_conf, volume, images, cloud_index=cloud_path[0].split('cloud_results_')[-1].split('.pkl')[0])
-            # gt_vol = extinction[0]
-            # M = masks[0].detach().cpu()
-            # if conf_vol is not None:
-            #     plt.scatter(gt_vol[M].ravel(), est_vol[M].ravel().detach().cpu(),
-            #             c=conf_vol[M].ravel().cpu().detach())
-            # else:
-            #     plt.scatter(gt_vol[M].ravel(), est_vol[M].ravel().detach().cpu())
-            # plt.colorbar()
-            # plt.plot([0, gt_vol[M].ravel().max()], [0, gt_vol[M].ravel().max()], 'r')
-            # plt.xlabel('gt')
-            # plt.ylabel('est')
-            # plt.axis('square')
-            # plt.show()
-            # if conf_vol is not None:
-            #     plt.scatter(np.abs(gt_vol[M].ravel() - est_vol[M].ravel().cpu().detach().numpy()),
-            #                 conf_vol[M].ravel().cpu().detach())
-            #     plt.xlabel('|gt-est|')
-            #     plt.ylabel('confidence')
-            #     plt.show()
-
-            # loss_shdom(est_vol , diff_renderer_shdom)
-
-            # loss = torch.mean(torch.stack(loss))
+                NotImplementedError
+            loss = torch.mean(torch.stack(loss))
             # loss = torch.tensor(loss).mean()
 
-
-            # torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.optimizer.clip)
-            if cfg.optimizer.loss_thr<loss:
-                print("Images are too inconsistent, skip gradient update for stability")
-                continue
-            loss.backward()
-
-            skip=False
-            for param in model.decoder.parameters():
-                if param.requires_grad and not torch.all(torch.isfinite(param.grad)):
-                    skip = True
-                    continue
-            if skip:
-                print("invalid gradients")
-                continue
             # Take the training step.
-            iteration += 1
-            optimizer.step()
+            try:
+                loss.backward()
+                optimizer.step()
+
+            except:
+                pass
             # torch.nn.utils.clip_grad_norm_(model.parameters(), 10)
             with torch.no_grad():
+                if cfg.ct_net.use_neighbours:
+                    out["output"] = [ext_est.reshape(-1,3,3,3)[:,1,1,1] for ext_est in out["output"]]
+                    out["volume"] = [ext_gt.reshape(-1, 3, 3, 3)[:, 1, 1, 1] for ext_gt in out["volume"]]
 
+                if cfg.optimizer.loss == 'CE':
+                    out["output"] = get_pred_from_discrete(out["output"], cfg.cross_entropy.min, cfg.cross_entropy.max, cfg.cross_entropy.bins)
                 relative_err = [relative_error(ext_est=ext_est,ext_gt=ext_gt) for ext_est, ext_gt in zip(out["output"], out["volume"])]#torch.norm(out["output"] - out["volume"],p=1,dim=-1) / (torch.norm(out["volume"],p=1,dim=-1) + 1e-6)
                 relative_err = torch.tensor(relative_err).mean()
                 relative_mass_err = [relative_mass_error(ext_est=ext_est,ext_gt=ext_gt) for ext_est, ext_gt in zip(out["output"], out["volume"])]#(torch.norm(out["output"],p=1,dim=-1) - torch.norm(out["volume"],p=1,dim=-1)) / (torch.norm(out["volume"],p=1,dim=-1) + 1e-6)
                 relative_mass_err = torch.tensor(relative_mass_err).mean()
+
             # Update stats with the current metrics.
             stats.update(
                 {"loss": float(loss), "relative_error": float(relative_err), "lr":  lr_scheduler.get_last_lr()[0],#optimizer.param_groups[0]['lr'],#lr_scheduler.get_last_lr()[0]
@@ -321,15 +278,10 @@ def main(cfg: DictConfig):
                     writer.monitor_scatterer_error(relative_mass_err, relative_err)
                     for ind in range(len(out["output"])):
                         writer.monitor_scatter_plot(out["output"][ind], out["volume"][ind],ind=ind)
-                        writer.monitor_images(diff_renderer_shdom.gt_images,np.array(diff_renderer_shdom.images))
+                    # writer.monitor_images(images)
 
-            # with torch.cuda.device(device=device):
-            #     torch.cuda.empty_cache()
             # Validation
-            # for mode in range(2)
             if iteration % cfg.validation_iter_interval == 0 and iteration > 0:
-                optimizer.zero_grad()
-                del images
                 loss_val = 0
                 relative_err= 0
                 relative_mass_err = 0
@@ -338,7 +290,7 @@ def main(cfg: DictConfig):
 
                 # val_batch = next(val_dataloader.__iter__())
 
-                    val_image, extinction, grid, image_sizes, projection_matrix, camera_center, masks,_ = val_batch#[0]#.values()
+                    val_image, extinction, grid, image_sizes, projection_matrix, camera_center, masks = val_batch#[0]#.values()
                     val_image = torch.tensor(val_image, device=device).float()
                     val_volume = Volumes(torch.unsqueeze(torch.tensor(extinction, device=device).float(), 1), grid)
                     val_camera = PerspectiveCameras(image_size=image_sizes,P=torch.tensor(projection_matrix, device=device).float(),
@@ -349,7 +301,7 @@ def main(cfg: DictConfig):
                     if torch.sum(torch.tensor([(mask).sum() if mask is not None else mask for mask in masks])) == 0:
                         continue
                 # Activate eval mode of the model (lets us do a full rendering pass).
-                #     model.eval()
+                    model.eval()
                     with torch.no_grad():
                         val_out = model(
                             val_camera,
@@ -357,9 +309,9 @@ def main(cfg: DictConfig):
                             val_volume,
                             masks
                         )
-                        if val_out["output"][0].shape[-1] > 1:
+                        if cfg.optimizer.loss == 'CE':
                             val_out["output"] = get_pred_from_discrete(val_out["output"], cfg.cross_entropy.min,
-                                                              cfg.cross_entropy.max, cfg.cross_entropy.bins)
+                                                                  cfg.cross_entropy.max, cfg.cross_entropy.bins)
 
                         est_vols = torch.zeros(torch.squeeze(val_volume.extinctions,1).shape, device=val_volume.device)
                         if cfg.ct_net.use_neighbours:
@@ -372,13 +324,13 @@ def main(cfg: DictConfig):
                                 est_vol.reshape(-1)[m] = out_vol.reshape(-1)  # .reshape(m.shape)[m]
                         assert len(est_vols)==1 ##TODO support validation with batch larger than 1
                         gt_vol = val_volume.extinctions[0].squeeze()
-                        est_vol = est_vols.squeeze()
+                        est_vols = est_vols.squeeze()
                         if cfg.optimizer.loss == 'L2_relative_error':
-                            loss_val += err(est_vol.squeeze(), gt_vol.squeeze()) / (torch.norm(gt_vol.squeeze())**2 / gt_vol.shape[0] + 1e-2)
+                            loss_val += err(est_vols.squeeze(), gt_vol.squeeze()) / (torch.norm(gt_vol.squeeze())**2 / gt_vol.shape[0] + 1e-2)
                         elif cfg.optimizer.loss == 'L2':
-                            loss_val += err(est_vol.squeeze(), gt_vol.squeeze())
+                            loss_val += err(est_vols.squeeze(), gt_vol.squeeze())
                         elif cfg.optimizer.loss == 'L1_relative_error':
-                            loss_val += relative_error(ext_est=est_vol,ext_gt=gt_vol)
+                            loss_val += relative_error(ext_est=est_vols,ext_gt=gt_vol)
                         # elif cfg.optimizer.loss == 'CE':
                         #     loss = [CE(ext_est,
                         #                to_discrete(ext_gt, cfg.cross_entropy.min, cfg.cross_entropy.max,
@@ -386,20 +338,19 @@ def main(cfg: DictConfig):
                         #             for ext_est, ext_gt in zip(val_out["output"], out["volume"])]
                         # loss_val += l1(val_out["output"], val_out["volume"]) / torch.sum(val_out["volume"]+1000)
 
-                        relative_err += relative_error(ext_est=est_vol,ext_gt=gt_vol)#torch.norm(val_out["output"] - val_out["volume"], p=1) / (torch.norm(val_out["volume"], p=1) + 1e-6)
-                        relative_mass_err += relative_mass_error(ext_est=est_vol,ext_gt=gt_vol)#(torch.norm(val_out["output"], p=1) - torch.norm(val_out["volume"], p=1)) / (torch.norm(val_out["volume"], p=1) + 1e-6)
+                        relative_err += relative_error(ext_est=est_vols,ext_gt=gt_vol)#torch.norm(val_out["output"] - val_out["volume"], p=1) / (torch.norm(val_out["volume"], p=1) + 1e-6)
+                        relative_mass_err += relative_mass_error(ext_est=est_vols,ext_gt=gt_vol)#(torch.norm(val_out["output"], p=1) - torch.norm(val_out["volume"], p=1)) / (torch.norm(val_out["volume"], p=1) + 1e-6)
                         if writer:
                             writer._iter = iteration
                             writer._dataset = 'val'  # .format(val_i)
                             if val_i in val_scatter_ind:
-                                writer.monitor_scatter_plot(est_vol, gt_vol,ind=val_i)
+                                writer.monitor_scatter_plot(est_vols, gt_vol,ind=val_i)
                     # Update stats with the validation metrics.
+                    stats.update({"loss": float(loss_val), "relative_error": float(relative_err)}, stat_set="val")
 
                 loss_val /= (val_i + 1)
                 relative_err /= (val_i + 1)
                 relative_mass_err /= (val_i+1)
-                print(f'[val] | epoch {epoch} | it {iteration} |  loss: {loss_val} | relative_err: {relative_err} |relative_mass_err: {relative_mass_err}')
-                stats.update({"loss": float(loss_val), "relative_error": float(relative_err)}, stat_set="val")
 
                 if writer:
                     writer._iter = iteration
@@ -409,11 +360,11 @@ def main(cfg: DictConfig):
                     # writer.monitor_images(val_image)
 
                 stats.print(stat_set="val")
+
+
+
                 # Set the model back to train mode.
-                del val_camera, val_image, val_volume, masks
-                # with torch.cuda.device(device=device):
-                #     torch.cuda.empty_cache()
-                # model.decoder.train()
+                model.train()
 
                 # Checkpoint.
             if (
@@ -425,6 +376,8 @@ def main(cfg: DictConfig):
                 print(f"Storing checkpoint {curr_checkpoint_path}.")
                 data_to_store = {
                     "model": model.state_dict(),
+                    "optimizer": optimizer.state_dict(),
+                    "stats": pickle.dumps(stats),
                 }
                 torch.save(data_to_store, curr_checkpoint_path)
 

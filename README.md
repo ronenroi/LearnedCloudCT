@@ -32,17 +32,39 @@ Installation using using anaconda package management
 Start a clean virtual environment
 ```
 conda create -n probct python=3.8
-source activate probct
+conda activate probct
 ```
 
 Install required packages
 ```
+cd LearnedCloudCT
 pip install -r requirements.txt
+pip install -e .
+git clone https://github.com/aviadlevis/pyshdom.git
+cd pyshdom
+python setup.py develop
 ```
 
 
+
+
+
 &nbsp;
-
-
+Generate Mie tables for phase function and albedo computations
+```
+python scripts/generate_mie_tables.py  \
+    --start_reff 1.0 --end_reff 65.0 --num_reff 117 --start_veff 0.01 --end_veff 0.4 --num_veff 117 \
+    --radius_cutoff 100.0 --wavelength  0.66
+```
+```
+python scripts/generate_mie_tables.py  \
+    --start_reff 1.0 --end_reff 65.0 --num_reff 117 --start_veff 0.01 --end_veff 0.4 --num_veff 117 \
+    --radius_cutoff 100.0 --wavelength  0.672
+```
+&nbsp;
+Return to project directory:
+```
+cd ../
+```
 If you use this package in an academic publication please acknowledge the appropriate publications (see LICENSE file). 
 
