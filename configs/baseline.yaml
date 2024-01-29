@@ -1,0 +1,74 @@
+seed: 0
+debug: False
+version: 'V2'
+checkpoint_resume_path: ''
+data:
+  n_cam: 10
+  noise: False
+  mean: 0.017
+  std: 0.0072
+  rand_cam: False
+  full_well_val: None
+  image_size: None
+
+optimizer:
+  max_epochs: 100000
+  batch_size: 1
+  iter_steps: [1000000000]
+  lr_scheduler_gamma: 0.1
+
+
+ct_net:
+  n_hidden_neurons_xyz: 64
+  n_hidden_neurons_dir: 64
+  n_layers_xyz: 4
+  n_layers_dir: 4
+  append_xyz: [2]
+  append_dir: [2]
+  n_query: 500
+  val_n_query: 500
+  stop_encoder_grad: False
+  mask_type: 'space_carving'  #'space_carving' 'gt_mask' None
+  val_mask_type: 'space_carving' #'space_carving'  #'space_carving' 'gt_mask' None
+  query_point_method: 'random' #'topk' gt_sc_random
+  query_point_val_method: 'all'
+  use_neighbours: False # penalize model also for voxel neighbours
+  pred_type: 'max'
+
+backbone:
+  name: 'resnet50_fpn' #'resnet50_fpn' 'resnet34' fasterrcnn_resnet50_fpn
+  pretrained: True
+  num_layers: 4
+  index_interp: 'bilinear'
+  index_padding: 'zeros' #'zeros', 'border', or 'reflection'
+  upsample_interp: 'bilinear'
+  feature_scale: 1.0
+  use_first_pool: 'batch'
+  sampling_support: 3
+  sampling_output_size: 9
+  out_channels: 512
+  n_sampling_nets: 10
+  feature_flatten: False
+  modify_first_layer: True
+
+decoder:
+  type: 'mlp' #mlp transformer
+  masked: False
+  num_masked: None
+  average_cams: False
+  feature_flatten: True
+  apply_lora: False
+  lora_dim: 64
+  lora_alpha: 1000
+  lora_dropout: 0
+  fan_in_fan_out: False
+  merge_weights: False
+
+#transformer:
+#  hidden_dim: 256
+#  dropout: 0.1
+#  nheads: 1
+#  dim_feedforward: 1024
+#  num_encoder_layers: 6
+#  num_decoder_layers: 6
+#  normalize_before: True

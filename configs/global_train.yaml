@@ -1,0 +1,49 @@
+defaults:
+  - baseline
+
+hydra:
+  run:
+    dir: ../outputs/${now:%Y-%m-%d}_BOMEX50_Train=BOMEX50_v2_mode_train_lr5.0e-05_global_fusion/${now:%H-%M-%S}
+#    dir: ../outputs/${now:%Y-%m-%d}_tmp/${now:%H-%M-%S}
+
+resume: True
+stats_print_interval: 5
+validation_iter_interval: 5
+checkpoint_iteration_interval: 250
+#checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-04-05_BOMEX_500CCN_10cameras_20m_V1_noise/14-16-49/checkpoints/cp_230000.pth'
+#checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-04-05_BOMEX_50CCN_10cameras_20m_V1_noise/14-15-58/checkpoints/cp_225000.pth'
+#checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2022-03-31_BOMEX_Res50_FPN_512channels_Sampl_3_9_10cams_L2_relative_LR5.0e-05_FixCTv4_wd1.0e-05_n_sampling_nets10/00-36-48/checkpoints/cp_130000.pth'
+checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-04-05_BOMEX_50CCN_10cameras_20m_CE_noise/14-15-26/checkpoints/cp_230000.pth'
+#checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-04-05_BOMEX_500CCN_10cameras_20m_CE_noise/14-14-03/checkpoints/cp_230000.pth'
+gpu: 1
+
+data:
+  dataset_name: 'BOMEX_50CCN_10cameras_20m' #'HAWAII_2000CCN_10cameras_20m' BOMEX_10cameras_20m#'BOMEX_50CCN_10cameras_20m' #'CASS_600CCN_roiprocess_10cameras_20m'
+  n_training: -1
+  n_val: 50
+  noise: False
+
+optimizer:
+  lr: 5.0e-05
+  wd: 1.0e-05
+  loss: 'L2_relative_error' #'L2_relative_error' # 'CE'
+
+cross_entropy:
+  min: 0
+  max: 300
+  bins: 301
+
+ct_net:
+  decoder_batchify: True
+  encoder_mode: 'train'
+
+
+decoder:
+  name: 'FixCTv4_CE' #'CE' #FixCTv4_CE
+
+
+global_fusion:
+  n_clouds: 1
+  kernel_size: 3
+  latent_size: 64
+  in_channels: 301

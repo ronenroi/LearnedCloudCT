@@ -1,0 +1,20 @@
+hydra:
+  run:
+    dir: ../test_results/${now:%Y-%m-%d}/${now:%H-%M-%S}
+seed: 3
+debug: False
+gpu: 3
+save_results: False
+show: False
+checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2022-03-31_BOMEX_Res50_FPN_512channels_Sampl_3_9_10cams_L2_relative_LR5.0e-05_FixCTv4_wd1.0e-05_n_sampling_nets10/00-36-48/checkpoints/cp_130000.pth'
+data:
+  dataset_name: 'BOMEX_50CCN_10cameras_20m'
+  n_val: -1
+
+ct_net:
+  val_n_query: 500
+  val_mask_type: 'space_carving' # 'space_carving' 'gt_mask' None
+  query_point_val_method: 'all'
+
+min_mask_points: 0 # 30 for CASS_10cams_50m
+

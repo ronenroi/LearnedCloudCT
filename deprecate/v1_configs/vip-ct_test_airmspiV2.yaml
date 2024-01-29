@@ -1,0 +1,28 @@
+hydra:
+  run:
+    dir: ../test_results/${now:%Y-%m-%d}_32N123W_experiment_cloud1_AirMSPI_FT_V2_drop_index1_0_0.5_50_ce_weight_zero0.1_cloud234/${now:%H-%M-%S}
+seed: 3
+debug: False
+gpu: 1
+rerender: True
+#checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-04-06_AirMSPI_BOMEX_aux_8cams_V1_drop_index1/19-44-22/checkpoints/cp_85000.pth'
+#checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-04-06_AirMSPI_BOMEX_aux_8cams_V2_drop_index1/19-46-15/checkpoints/cp_85000.pth'
+checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-04-12_AirMSPI_FT_clouds_V2_drop_index1_0_0.5_50_ce_weight_zero0.1_cloud234/10-40-26/checkpoints/cp_135.pth'
+#checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-04-10_AirMSPI_FT_234_clouds_V2_drop_index1_0_0.5_50_ce_weight_zero0.1_cloud1/12-54-38/checkpoints/cp_5.pth'
+data:
+  dataset_name: '32N123W_experiment_cloud1'
+  n_val: -1
+
+ct_net:
+  val_n_query: 1000
+  val_mask_type: 'space_carving' # 'space_carving' 'gt_mask' None
+  query_point_val_method: 'all'
+#  pred_type: 'differentiable_max' #max differentiable_max_corrected  differentiable_max
+  conf_type: 'prob' #conf_interval prob std rel_prob
+
+min_mask_points: 0
+
+shdom:
+  n_jobs: 35
+  use_forward_grid: True
+  add_rayleigh: True

@@ -1,0 +1,70 @@
+defaults:
+  - baseline
+  - _self_
+
+hydra:
+  run:
+    dir: ../outputs/${now:%Y-%m-%d}_BOMEX_5000CCN_10cameras_20m_V2_CE_noise_TRUE_full_well_val_None_CE_weight_zero_0.001_nquery1000_lr_5.0e-05_Enc_SwinTransforemr_T_resume/${now:%H-%M-%S}
+#    dir: ../outputs/${now:%Y-%m-%d}_Tmp/${now:%H-%M-%S}
+#
+resume: True
+stats_print_interval: 25
+validation_iter_interval: 2500
+checkpoint_iteration_interval: 5000
+checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-07-19_BOMEX_5000CCN_10cameras_20m_V2_CE_noise_TRUE_full_well_val_None_CE_weight_zero_0.01_lr_5.0e-05_Enc_SwinTransforemr_T/16-45-51/checkpoints/cp_110000.pth'
+#checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/ProbCT/outputs/2023-07-18_PSEUDO_BOMEX_50CCN_10cameras_20m_CE_noise_TRUE_full_well_val_None_CE_weight_zero_1_lr_1.0e-05_after_LoRA/12-30-30/checkpoints/cp_5000.pth'
+gpu: 3
+#ALL_DATASETS = ("Toy_10cameras_20m","Toy2_10cameras_20m","BOMEX_CASS_10cameras_20m", "CASS_10cameras_20m", "CASS_10cameras_50m", "BOMEX_10cameras_20m",''
+#                "BOMEX_10cameras_50m", "BOMEX_32cameras_20m", "BOMEX_32cameras_50m", "BOMEX_10cameras_20m_varying_S", "BOMEX_10cameras_20m_varying_M",
+#                "BOMEX_10cameras_20m_varying_L", "BOMEX_10cameras_20m_varying_XL",
+#                "subset_of_seven_clouds",
+#                "BOMEX_50CCN_10cameras_20m",
+#                "BOMEX_50CCN_aux_10cameras_20m",
+#                'CASS_600CCN_roiprocess_10cameras_20m',
+#                "HAWAII_2000CCN_10cameras_20m",
+#                "DYCOMS_RF02_500CCN_10cameras_20m",
+#                "DYCOMS_RF02_50CCN_10cameras_20m",
+#                )
+data:
+  dataset_name: BOMEX_5000CCN_new_10cameras_20m #['CASS_600CCN_roiprocess_10cameras_20m','HAWAII_2000CCN_10cameras_20m','BOMEX_50CCN_10cameras_20m','BOMEX_10cameras_20m']
+  #['CASS_600CCN_roiprocess_10cameras_20m','HAWAII_2000CCN_10cameras_20m','BOMEX_50CCN_10cameras_20m','BOMEX_10cameras_20m'] #'CASS_600CCN_roiprocess_10cameras_20m'
+  n_training: -1
+  n_val: 40
+  noise: True
+
+optimizer:
+  lr: 5.0e-05
+  wd: 1.0e-05
+  loss: 'CE' #'L2_relative_error' # 'CE'
+  ce_weight_zero: True
+  BBSE_ratio: False
+  CE_weight_zero: 0.001
+
+ct_net:
+  n_query: 1000
+#  stop_encoder_grad: False
+#  pred_type: 'differentiable_max'
+#  prob_gain: 10
+#  conf_type: 'entropy' #conf_interval prob std rel_prob
+  encoder_mode: 'train'
+
+backbone:
+  name: 'swin_v2_t' #'resnet50_fpn' 'resnet34' fasterrcnn_resnet50_fpn
+  pretrained: False
+
+#  mask_type: 'toy3'  #'space_carving' 'gt_mask' None
+#  val_mask_type: 'toy3' #'space_carving'  #'space_carving' 'gt_mask' None
+
+cross_entropy:
+  min: 0
+  max: 300
+  bins: 301
+
+decoder:
+  name: 'FixCTv4_CE' #'CE' #FixCTv4_CE
+#  apply_lora: True
+#  lora_dim: 64
+#  lora_alpha: 1000
+#  lora_dropout: 0
+#  fan_in_fan_out: False
+#  merge_weights: False
