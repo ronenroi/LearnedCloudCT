@@ -8,6 +8,7 @@ import torch
 from renderer.shdom_util import Monotonous
 import matplotlib.pyplot as plt
 from joblib import Parallel, delayed
+DEFAULT_PYSHDOM_ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)),'../pyshdom4VIP-CT')
 
 
 # class ForwardModel(object):
@@ -133,7 +134,7 @@ class DiffRendererSHDOM(object):
         self.use_forward_phase_albedo = cfg.shdom.use_forward_phase_albedo
         if self.use_forward_phase_albedo:
             self.forward_cloud_path = self.get_microphysics_path(cfg)
-        self.mie_base_path = '../../../pyshdom/mie_tables/polydisperse/Water_<wavelength>nm.scat'
+        self.mie_base_path = os.path.join(DEFAULT_PYSHDOM_ROOT, 'mie_tables/polydisperse/Water_<wavelength>nm.scat')
         self.add_rayleigh = cfg.shdom.add_rayleigh
 
         parser = argparse.ArgumentParser()
@@ -146,7 +147,7 @@ class DiffRendererSHDOM(object):
             AirGenerator = shdom.generate.AFGLSummerMidLatAir
             parser = AirGenerator.update_parser(parser)
         self.args = parser.parse_args()
-        self.args.air_path = '../../../pyshdom/ancillary_data/AFGL_summer_mid_lat.txt'
+        self.args.air_path = os.path.join(DEFAULT_PYSHDOM_ROOT,'ancillary_data/AFGL_summer_mid_lat.txt')
         self.args.air_max_alt = 5
         self.args.extinction = 0
         self.cloud_generator = CloudGenerator(self.args)
@@ -590,7 +591,7 @@ class DiffRendererSHDOM_Airmspi(object):
         self.min_bound = cfg.cross_entropy.min
         self.max_bound = cfg.cross_entropy.max
         self.use_forward_grid = cfg.shdom.use_forward_grid
-        self.mie_base_path = '../../../pyshdom/mie_tables/polydisperse/Water_<wavelength>nm.scat'
+        self.mie_base_path = os.path.join(DEFAULT_PYSHDOM_ROOT, 'mie_tables/polydisperse/Water_<wavelength>nm.scat')
         self.add_rayleigh = cfg.shdom.add_rayleigh
 
         parser = argparse.ArgumentParser()
@@ -604,7 +605,7 @@ class DiffRendererSHDOM_Airmspi(object):
             AirGenerator = shdom.generate.AFGLSummerMidLatAir
             parser = AirGenerator.update_parser(parser)
         self.args = parser.parse_args()
-        self.args.air_path = '../../../pyshdom/ancillary_data/AFGL_summer_mid_lat.txt'
+        self.args.air_path = os.path.join(DEFAULT_PYSHDOM_ROOT,'ancillary_data/AFGL_summer_mid_lat.txt')
         self.args.air_max_alt = 5
         self.args.extinction = 0
         self.cloud_generator = CloudGenerator(self.args)

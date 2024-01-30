@@ -1,8 +1,6 @@
 # This file contains the main script for VIP-CT and ProbCT training.
 # You are very welcome to use this code. For this, clearly acknowledge
-# the source of this code, and cite the paper described in the readme file:
-# Roi Ronen, Vadim Holodovsky and Yoav. Y. Schechner, "Variable Imaging Projection Cloud Scattering Tomography",
-# Proc. IEEE Transactions on Pattern Analysis and Machine Intelligence, 2022.
+# the source of this code, and cite the paper described in the readme file.
 #
 # Copyright (c) Roi Ronen. The python code is available for
 # non-commercial use and exploration.  For commercial use contact the
@@ -14,34 +12,25 @@
 # LICENSE file in the root directory of this source tree.
 
 
-import collections
-import os, time
-import pickle
+
 import warnings
-# import sys
-# sys.path.insert(0, '/home/roironen/pyshdom-NN/projects')
 import hydra
 import numpy as np
-import torch
 
 from dataloader.dataset import get_cloud_datasets, trivial_collate
 from ProbCT.util.visualization import SummaryWriter
 from ProbCT.CTnetV2 import *
 from ProbCT.CTnet import CTnet
 from ProbCT.util.stats import Stats
+from ProbCT.util.discritize import get_pred_and_conf_from_discrete, to_discrete, get_pred_from_discrete
 from omegaconf import DictConfig
 from metrics.test_errors import *
-from metrics.losses import *
-from ProbCT import *
+from metrics.test_errors import *
 from scene.volumes import Volumes
 from scene.cameras import PerspectiveCameras
-from renderer.shdom_renderer import DiffRendererSHDOM, LossSHDOM
-# from shdom.shdom_nn import *
-import matplotlib.pyplot as plt
+from renderer.shdom_renderer import DiffRendererSHDOM
 
-# relative_error = lambda ext_est, ext_gt, eps=1e-6 : torch.norm(ext_est.view(-1) - ext_gt.view(-1),p=1) / (torch.norm(ext_gt.view(-1),p=1) + eps)
-# mass_error = lambda ext_est, ext_gt, eps=1e-6 : (torch.norm(ext_gt.view(-1),p=1) - torch.norm(ext_est.view(-1),p=1)) / (torch.norm(ext_gt.view(-1),p=1) + eps)
-CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs")
+CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)),"../", "configs")
 CE = torch.nn.CrossEntropyLoss(reduction='mean')
 
 # def build_criterion(args):
@@ -53,7 +42,7 @@ CE = torch.nn.CrossEntropyLoss(reduction='mean')
 #     criterion = criterion.to(device)
 #     return criterion
 
-@hydra.main(config_path=CONFIG_DIR, config_name="vipctV2_shdom_train")
+@hydra.main(config_path=CONFIG_DIR, config_name="ft_train")
 def main(cfg: DictConfig):
 
     # Set the relevant seeds for reproducibility.

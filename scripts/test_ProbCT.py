@@ -18,23 +18,22 @@ import warnings
 import hydra
 import numpy as np
 import torch
+import scipy.io as sio
+
 from dataloader.dataset import get_cloud_datasets, trivial_collate
-from ProbCT.CTnet import CTnet
 from ProbCT.CTnetV2 import *
 from omegaconf import OmegaConf
 from omegaconf import DictConfig
 from ProbCT.util.plot_util import *
 from ProbCT.util.visualization import SummaryWriter
-import scipy.io as sio
+from ProbCT.util.discritize import get_pred_and_conf_from_discrete
 from metrics.test_errors import *
-from metrics.losses import *
-from ProbCT import *
 from scene.volumes import Volumes
 from scene.cameras import PerspectiveCameras
 
-CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs")
+CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)),"../", "configs")
 
-@hydra.main(config_path=CONFIG_DIR, config_name="vipctV2_test")
+@hydra.main(config_path=CONFIG_DIR, config_name="test")
 def main(cfg: DictConfig):
 
     # Set the relevant seeds for reproducibility

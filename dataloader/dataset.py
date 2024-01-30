@@ -4,9 +4,7 @@
 # All rights reserved.
 
 # You are very welcome to use this code. For this, clearly acknowledge
-# the source of this code, and cite the paper described in the readme file:
-# Roi Ronen, Vadim Holodovsky and Yoav. Y. Schechner, "Variable Imaging Projection Cloud Scattering Tomography",
-# Proc. IEEE Transactions on Pattern Analysis and Machine Intelligence, 2022.
+# the source of this code, and cite the paper described in the readme file.
 #
 # Copyright (c) Roi Ronen. The python code is available for
 # non-commercial use and exploration.  For commercial use contact the
@@ -28,8 +26,7 @@ import socket
 import random
 import scipy.io as sio
 from .noise import SatelliteNoise
-DEFAULT_DATA_ROOT = '/wdata/roironen/Data'
-
+DEFAULT_DATA_ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)),'../../../Data')
 
 ALL_DATASETS = ("Toy_10cameras_20m","Toy2_10cameras_20m","Toy3_10cameras_20m","BOMEX_CASS_10cameras_20m", "CASS_10cameras_20m", "CASS_10cameras_50m", "BOMEX_10cameras_20m",
                 "BOMEX_10cameras_50m", "BOMEX_32cameras_20m", "BOMEX_32cameras_50m", "BOMEX_10cameras_20m_varying_S", "BOMEX_10cameras_20m_varying_M",
@@ -240,14 +237,13 @@ def get_cloud_datasets(
         std=std,
     dataset_name = dataset_names,
         noise=cfg.data.noise,
-        full_well_val=cfg.data.full_well_val
-
+        full_well_val= cfg.data.full_well_val if hasattr(cfg.data, 'full_well_val') else None
     )
 
     val_dataset = CloudDataset(val_paths, n_cam=n_cam,
         rand_cam = rand_cam, mask_type=cfg.ct_net.val_mask_type, mean=mean, std=std,   dataset_name = dataset_name,
         noise=cfg.data.noise,
-        full_well_val=cfg.data.full_well_val
+        full_well_val=cfg.data.full_well_val if hasattr(cfg.data, 'full_well_val') else None
 )
 
     return train_dataset, val_dataset

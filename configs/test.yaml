@@ -1,47 +1,35 @@
 hydra:
   run:
-    dir: ../test_results/${now:%Y-%m-%d}_Test_CASS_Train_BOMEX500_V2/${now:%H-%M-%S}
+    dir: ../test_results/${now:%Y-%m-%d}_Exp1/${now:%H-%M-%S}
 seed: 3
 debug: False
-gpu: 3
+gpu: 0
 save_results: False
 show: False
 mode: train
-#checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-05-27_Train_TOY3_1views/10-23-42/checkpoints/cp_180000.pth'
-#checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-06-14_Train_BOMEX_500_BBSE_ratio_resume_original/19-45-46/checkpoints/cp_95000.pth'
-#checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-06-15_Train_BOMEX_500_BBSE_ratio_BBSE_weight_zero_3_resume_original/13-35-51/checkpoints/cp_70000.pth'
-#checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-06-15_Train_BOMEX_500_BBSE_ratio_BBSE_weight_zero_10_resume_original/10-21-52/checkpoints/cp_90000.pth'
-checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-07-16_FT_BOMEX50_Train=BOMEX50_v2_mode_train_lr5.0e-05train_lora/18-12-46/checkpoints/cp_60.pth'
 
-#/wdata/roironen/Deploy/ProbCT/outputs/2023-06-14_Train_BOMEX_500_BBSE_ratio_resume_original/15-42-49/checkpoints/cp_120000.pth
-#checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-04-10_FT_BOMEX50CCN_BOMEX_50CCN_10cameras_20m_V1_LR5.0e-06_EVALadded/20-48-35/checkpoints/cp_50.pth'
-#checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-05-25_Train_TOY3/16-14-06/checkpoints/cp_165000.pth'
-#checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-05-26_Train_TOY3_3views/13-44-34/checkpoints/cp_310000.pth'
-#checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-05-26_Train_TOY3_10views/13-44-12/checkpoints/cp_180000.pth'
-#checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-04-05_BOMEX_500CCN_10cameras_20m_V1_noise/14-16-49/checkpoints/cp_230000.pth'
+checkpoint_resume_path: '/wdata/roironen/Deploy/VIPCT/outputs/2023-04-19_FT_BOMEX500_Train_BOMEX500_v2/10-10-37/checkpoints/cp_500.pth'
+
 data:
-#  dataset_name: 'BOMEX_5000CCN_new_10cameras_20m'
+  dataset_name: 'BOMEX_5000CCN_new_10cameras_20m'
 #  dataset_name: 'Toy2_10cameras_20m'
 #  dataset_name: 'Toy3_10cameras_20m'
 #  dataset_name: 'CASS_600CCN_roiprocess_10cameras_20m'
 #  dataset_name: 'HAWAII_2000CCN_10cameras_20m'
 #  dataset_name: 'DYCOMS_RF02_500CCN_10cameras_20m'
 #  dataset_name: 'DYCOMS_RF02_50CCN_10cameras_20m'
-  dataset_name: 'BOMEX_50CCN_10cameras_20m'
+#  dataset_name: 'BOMEX_50CCN_10cameras_20m'
   n_val: -1
-  noise: True
-  full_well_val: None
   image_size: 116
 
 ct_net:
   val_n_query: 100
   val_mask_type: 'space_carving' # 'space_carving' 'gt_mask' None toy3
-#  query_point_val_method: 'all'
-  pred_type: 'differentiable_max' #max
+  pred_type: 'max' #max
   conf_type: 'entropy' #conf_interval prob std rel_prob
   decoder_batchify: True
 
-min_mask_points: 0 # 30 for CASS_10cams_50m
+min_mask_points: 0
 decoder:
   type: 'mlp' #mlp transformer
 

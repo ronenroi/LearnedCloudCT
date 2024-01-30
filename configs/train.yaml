@@ -4,7 +4,7 @@ defaults:
 
 hydra:
   run:
-    dir: ../outputs/${now:%Y-%m-%d}_BOMEX_5000CCN_10cameras_20m_V2_CE_noise_TRUE_full_well_val_None_CE_weight_zero_0.001_nquery1000_lr_5.0e-05_Enc_SwinTransforemr_T_resume/${now:%H-%M-%S}
+    dir: ../outputs/${now:%Y-%m-%d}_BOMEX_500CCN_10cameras_20m/${now:%H-%M-%S}
 #    dir: ../outputs/${now:%Y-%m-%d}_Tmp/${now:%H-%M-%S}
 #
 resume: False
@@ -38,7 +38,7 @@ optimizer:
   wd: 1.0e-05
   loss: 'CE' #'L2_relative_error' or 'CE'
   ce_weight_zero: True
-  BBSE_ratio: False
+#  BBSE_ratio: False
   CE_weight_zero: 0.01
 
 ct_net:

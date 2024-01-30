@@ -1,8 +1,6 @@
 # This file contains the main script for VIP-CT and ProbCT training.
 # You are very welcome to use this code. For this, clearly acknowledge
-# the source of this code, and cite the paper described in the readme file:
-# Roi Ronen, Vadim Holodovsky and Yoav. Y. Schechner, "Variable Imaging Projection Cloud Scattering Tomography",
-# Proc. IEEE Transactions on Pattern Analysis and Machine Intelligence, 2022.
+# the source of this code, and cite the paper described in the readme file.
 #
 # Copyright (c) Roi Ronen. The python code is available for
 # non-commercial use and exploration.  For commercial use contact the
@@ -19,7 +17,6 @@ import warnings
 import hydra
 import numpy as np
 
-
 from dataloader.dataset import get_cloud_datasets, trivial_collate
 from dataloader.airmspi_dataset import get_airmspi_datasets
 from ProbCT.util.visualization import SummaryWriter
@@ -31,8 +28,7 @@ from metrics.test_errors import *
 from scene.volumes import Volumes
 from scene.cameras import PerspectiveCameras
 
-# relative_error = lambda ext_est, ext_gt, eps=1e-6 : torch.norm(ext_est.view(-1) - ext_gt.view(-1),p=1) / (torch.norm(ext_gt.view(-1),p=1) + eps)
-# mass_error = lambda ext_est, ext_gt, eps=1e-6 : (torch.norm(ext_gt.view(-1),p=1) - torch.norm(ext_est.view(-1),p=1)) / (torch.norm(ext_gt.view(-1),p=1) + eps)
+
 CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)),"../", "configs")
 CE = torch.nn.CrossEntropyLoss(reduction='mean')
 CE_mask = torch.nn.BCELoss(reduction='mean')

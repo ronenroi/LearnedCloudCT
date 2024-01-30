@@ -1,8 +1,6 @@
 # This file contains a work in progress code.
 # You are very welcome to use this code. For this, clearly acknowledge
-# the source of this code, and cite the paper described in the readme file:
-# Roi Ronen, Vadim Holodovsky and Yoav. Y. Schechner, "Variable Imaging Projection Cloud Scattering Tomography",
-# Proc. IEEE Transactions on Pattern Analysis and Machine Intelligence, 2022.
+# the source of this code, and cite the paper described in the readme file.
 #
 # Copyright (c) Roi Ronen. The python code is available for
 # non-commercial use and exploration.  For commercial use contact the
@@ -17,8 +15,6 @@ import collections
 import os, time
 import pickle
 import warnings
-# import sys
-# sys.path.insert(0, '/home/roironen/pyshdom-NN/projects')
 import hydra
 import numpy as np
 import torch

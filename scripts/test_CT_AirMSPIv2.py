@@ -1,8 +1,6 @@
 # This file contains the main script for VIP-CT evaluation on AirMSPI data.
 # You are very welcome to use this code. For this, clearly acknowledge
-# the source of this code, and cite the paper described in the readme file:
-# Roi Ronen, Vadim Holodovsky and Yoav. Y. Schechner, "Variable Imaging Projection Cloud Scattering Tomography",
-# Proc. IEEE Transactions on Pattern Analysis and Machine Intelligence, 2022.
+# the source of this code, and cite the paper described in the readme file.
 #
 # Copyright (c) Roi Ronen. The python code is available for
 # non-commercial use and exploration.  For commercial use contact the
@@ -28,7 +26,7 @@ import scipy.io as sio
 from ProbCT import *
 from renderer.shdom_renderer import DiffRendererSHDOM_Airmspi
 
-CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs")
+CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)),"../", "configs")
 
 @hydra.main(config_path=CONFIG_DIR, config_name="vip-ct_test_airmspiV2")
 def main(cfg: DictConfig):

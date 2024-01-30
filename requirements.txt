@@ -3,7 +3,7 @@ certifi==2023.11.17
 charset-normalizer==3.3.2
 contourpy==1.1.1
 cycler==0.12.1
-dill==0.3.8
+dill==0.3.4
 filelock==3.13.1
 fonttools==4.47.2
 fsspec==2023.12.2
@@ -11,7 +11,7 @@ hydra-core==1.3.2
 idna==3.6
 importlib-resources==6.1.1
 Jinja2==3.1.3
-joblib==1.3.2
+joblib==0.17.0
 kiwisolver==1.4.5
 # Editable install with no version control (LearnedCloudCT==1.0)
 -e /wdata/roironen/Deploy/LearnedCloudCT
@@ -20,7 +20,7 @@ matplotlib==3.7.4
 mpmath==1.3.0
 networkx==3.1
 numdifftools==0.9.41
-numpy==1.24.4
+numpy==1.20.3
 nvidia-cublas-cu12==12.1.3.1
 nvidia-cuda-cupti-cu12==12.1.105
 nvidia-cuda-nvrtc-cu12==12.1.105
@@ -43,7 +43,7 @@ python-dateutil==2.8.2
 pytz==2023.4
 PyYAML==6.0.1
 requests==2.31.0
-scipy==1.10.1
+scipy==1.8.0
 -e git+https://github.com/aviadlevis/pyshdom.git@cad4877cac267f13562e08ab9dbc6b88490dd153#egg=shdom
 six==1.16.0
 sympy==1.12
@@ -56,3 +56,5 @@ typing_extensions==4.9.0
 tzdata==2023.4
 urllib3==2.1.0
 zipp==3.17.0
+
+setuptools~=68.2.2

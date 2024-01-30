@@ -31,9 +31,9 @@ from ProbCT import *
 from scene.volumes import Volumes
 from scene.cameras import PerspectiveCameras
 
-CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs")
+CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)),"../", "configs")
 
-@hydra.main(config_path=CONFIG_DIR, config_name="vipctV2_test_seq")
+@hydra.main(config_path=CONFIG_DIR, config_name="test_seq")
 def main(cfg: DictConfig):
 
     # Set the relevant seeds for reproducibility

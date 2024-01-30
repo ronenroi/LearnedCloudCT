@@ -82,7 +82,9 @@ class CTnetV2(torch.nn.Module):
             self.decoder_input_size += len_mask
 
         if cfg.decoder.type == 'mlp':
-            self.decoder =  LoRA_Decoder.from_cfg(cfg, self.decoder_input_size, self.ce_bins, self.use_neighbours) if cfg.decoder.apply_lora else Decoder.from_cfg(cfg, self.decoder_input_size, self.ce_bins, self.use_neighbours)
+            apply_lora = cfg.decoder.apply_lora if hasattr(cfg.decoder,'apply_lora') else False
+            self.decoder =  LoRA_Decoder.from_cfg(cfg, self.decoder_input_size, self.ce_bins, self.use_neighbours) if apply_lora \
+                else Decoder.from_cfg(cfg, self.decoder_input_size, self.ce_bins, self.use_neighbours)
             self.decoder_type = 'mlp'
         elif cfg.decoder.type == 'transformer':
             self.decoder = DecoderTransformer.from_cfg(cfg, self.decoder_input_size, self.ce_bins)

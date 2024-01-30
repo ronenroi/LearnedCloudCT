@@ -39,10 +39,10 @@ import numpy as np
 from dataloader.noise import SatelliteNoise
 import scipy.stats, scipy
 
-CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs")
+CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)),"../", "configs")
 global probs
 
-@hydra.main(config_path=CONFIG_DIR, config_name="vipctV2_test")
+@hydra.main(config_path=CONFIG_DIR, config_name="test")
 def main(cfg: DictConfig):
 
     # Set the relevant seeds for reproducibility

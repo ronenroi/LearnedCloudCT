@@ -29,7 +29,7 @@ optimizer:
   lr: 1.0e-05
   wd: 1.0e-05
   ce_weight_zero: False
-  loss: 'L2' #'L2_relative_error' # 'CE'
+  loss: 'L2'
   loss_thr: 3
 
 cross_entropy:
@@ -47,8 +47,8 @@ ct_net:
 
 
 decoder:
-  name: 'FixCTv4_CE_mask' #'CE' #FixCTv4_CE
-  apply_lora: True
+  name: 'FixCTv4_CE' #'CE' #FixCTv4_CE FixCTv4_CE_mask
+  apply_lora: False
   lora_dim: 64
   lora_alpha: 1000
   lora_dropout: 0

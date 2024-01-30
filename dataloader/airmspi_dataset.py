@@ -4,9 +4,7 @@
 # All rights reserved.
 
 # You are very welcome to use this code. For this, clearly acknowledge
-# the source of this code, and cite the paper described in the readme file:
-# Roi Ronen, Vadim Holodovsky and Yoav. Y. Schechner, "Variable Imaging Projection Cloud Scattering Tomography",
-# Proc. IEEE Transactions on Pattern Analysis and Machine Intelligence, 2022.
+# the source of this code, and cite the paper described in the readme file.
 #
 # Copyright (c) Roi Ronen. The python code is available for
 # non-commercial use and exploration.  For commercial use contact the
@@ -28,7 +26,7 @@ import socket
 import random
 import scipy.io as sio
 
-DEFAULT_DATA_ROOT = '/wdata/roironen/Data'
+DEFAULT_DATA_ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)),'../../../Data')
 
 def trivial_collate(batch):
     """
@@ -343,6 +341,7 @@ def get_airmspi_datasets(
         mapping_paths = [f for f in glob.glob(os.path.join(data_root, 'AirMSPI/test/training/voxel_pixel_list*.pkl'))]
         pixel_center_paths = [f for f in glob.glob(os.path.join(data_root, 'AirMSPI/test/training/pixel_centers_*.mat'))]
         image_size = [350, 350]
+        cfg.data.image_size = image_size
         image_train_paths = [f for f in glob.glob(os.path.join(image_root, "SIMULATED_AIRMSPI_TRAIN*"))]
         image_train_paths = [glob.glob(os.path.join(f, "*.pkl")) for f in image_train_paths]
         cloud_adj = 10
@@ -362,6 +361,7 @@ def get_airmspi_datasets(
         pixel_center_paths = [f for f in
                               glob.glob(os.path.join(data_root, 'AirMSPI/training/pixel_centers_*.mat'))]
         image_size = [350, 350]
+        cfg.data.image_size = image_size
         image_train_paths = [f for f in glob.glob(os.path.join(image_root, "SIMULATED_AIRMSPI_TRAIN*"))]
         image_train_paths = [glob.glob(os.path.join(f, "*.pkl")) for f in image_train_paths]
         cloud_adj = 1
