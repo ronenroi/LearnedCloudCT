@@ -35,7 +35,7 @@ def trivial_collate(batch):
     batch = np.array(batch, dtype=object).transpose().tolist()
     return batch
 
-ALL_DATASETS_AIRMSPI = ("32N123W_experiment_all_clouds",'32N123W_experiment_234_clouds',
+ALL_DATASETS_AIRMSPI = ("AirMSPI_32N123W_experiment_all_clouds",'AirMSPI_32N123W_experiment_234_clouds',
     "AirMSPI_BOMEX_50CCN_9cams","AirMSPI_BOMEX_aux_9cams", "32N123W_experiment_cloud1", "32N123W_experiment_cloud2", "18S8E_experiment"
 )
 #
@@ -459,7 +459,7 @@ def get_real_world_airmspi_datasets_ft(
     if dataset_name not in ALL_DATASETS_AIRMSPI:
         raise ValueError(f"'{dataset_name}'' does not refer to a known dataset.")
 
-    if dataset_name == '32N123W_experiment_all_clouds':
+    if dataset_name == 'AirMSPI_32N123W_experiment_all_clouds':
         image_paths = [os.path.join(data_root, "AirMSPI/test/32N123W_experiment_cloud1/airmspi_9images.mat"),
                        os.path.join(data_root, "AirMSPI/test/32N123W_experiment_cloud2/airmspi_9images.mat"),
                        os.path.join(data_root, "AirMSPI/test/32N123W_experiment_cloud3/airmspi_9images.mat"),
@@ -497,7 +497,7 @@ def get_real_world_airmspi_datasets_ft(
         ny = [72,60,72,72]
         nz = 32
 
-    elif dataset_name == '32N123W_experiment_234_clouds':
+    elif dataset_name == 'AirMSPI_32N123W_experiment_234_clouds':
         image_paths = [
                        os.path.join(data_root, "AirMSPI/test/32N123W_experiment_cloud2/airmspi_9images.mat"),
                        os.path.join(data_root, "AirMSPI/test/32N123W_experiment_cloud3/airmspi_9images.mat"),

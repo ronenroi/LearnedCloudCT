@@ -1,28 +1,32 @@
-defaults:
-  - baseline
-
 hydra:
   run:
-    dir: ../outputs/${now:%Y-%m-%d}_FT_BOMEX50_Train=BOMEX50_v2_mode_train_lr5.0e-05train_lora/${now:%H-%M-%S}
-#    dir: ../outputs/${now:%Y-%m-%d}_tmp/${now:%H-%M-%S}
+    dir: ../outputs/${now:%Y-%m-%d}_ft_probct_model/${now:%H-%M-%S}
 
+seed: 0
+debug: False
 resume: True
 stats_print_interval: 5
 validation_iter_interval: 5
 checkpoint_iteration_interval: 5
-#checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-04-05_BOMEX_500CCN_10cameras_20m_V1_noise/14-16-49/checkpoints/cp_230000.pth'
-#checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-04-05_BOMEX_50CCN_10cameras_20m_V1_noise/14-15-58/checkpoints/cp_225000.pth'
-#checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2022-03-31_BOMEX_Res50_FPN_512channels_Sampl_3_9_10cams_L2_relative_LR5.0e-05_FixCTv4_wd1.0e-05_n_sampling_nets10/00-36-48/checkpoints/cp_130000.pth'
-checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-07-16_FT_BOMEX50_Train=BOMEX50_v2_mode_train_lr5.0e-05train_lora/18-12-46/checkpoints/cp_60.pth'
-#checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-04-06_FT_BOMEX_50CCN_10cameras_20m_V2_LR5.0e-06/20-25-06/checkpoints/cp_1100.pth'
-#checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-04-05_BOMEX_500CCN_10cameras_20m_CE_noise/14-14-03/checkpoints/cp_230000.pth'
+#checkpoint_resume_path: '/wdata/roironen/Deploy/VIPCT/outputs/2023-04-09_AirMSPI_BOMEX_aux_8cams_V2_drop_index1_0_0.5_50_ce_weight_zero0.1_BEST/15-00-39/checkpoints/cp_45000.pth'
+#checkpoint_resume_path: '/wdata/roironen/Deploy/VIPCT/outputs/2023-04-05_BOMEX_500CCN_10cameras_20m_V1_noise/14-16-49/checkpoints/cp_230000.pth'
+#checkpoint_resume_path: '/wdata/roironen/Deploy/VIPCT/outputs/2023-04-05_BOMEX_50CCN_10cameras_20m_V1_noise/14-15-58/checkpoints/cp_225000.pth'
+#checkpoint_resume_path: '/wdata/roironen/Deploy/VIPCT/outputs/2022-03-31_BOMEX_Res50_FPN_512channels_Sampl_3_9_10cams_L2_relative_LR5.0e-05_FixCTv4_wd1.0e-05_n_sampling_nets10/00-36-48/checkpoints/cp_130000.pth'
+#checkpoint_resume_path: '/wdata/roironen/Deploy/VIPCT/outputs/2023-07-16_FT_BOMEX50_Train=BOMEX50_v2_mode_train_lr5.0e-05train_lora/18-12-46/checkpoints/cp_60.pth'
+#checkpoint_resume_path: '/wdata/roironen/Deploy/VIPCT/outputs/2023-04-06_FT_BOMEX_50CCN_10cameras_20m_V2_LR5.0e-06/20-25-06/checkpoints/cp_1100.pth'
+checkpoint_resume_path: '/wdata/roironen/Deploy/VIPCT/outputs/2023-04-05_BOMEX_500CCN_10cameras_20m_CE_noise/14-14-03/checkpoints/cp_230000.pth'
 gpu: 0
 
 data:
   dataset_name: 'BOMEX_50CCN_10cameras_20m' #'HAWAII_2000CCN_10cameras_20m' BOMEX_10cameras_20m#'BOMEX_50CCN_10cameras_20m' #'CASS_600CCN_roiprocess_10cameras_20m'
+#  dataset_name: 'AirMSPI_32N123W_experiment_234_clouds' # for AirMSPI
   n_training: -1
+  image_size: None
   n_val: 50
-  noise: True
+  noise: True # False for AirMSPI
+#  n_cam: 8 # for AirMSPI
+#  drop_index: 1 # for AirMSPI
+
 
 
 optimizer:
@@ -34,16 +38,17 @@ optimizer:
 
 cross_entropy:
   min: 0
-  max: 300
-  bins: 301
+  max: 300 # 50 AirMSPI
+  bins: 301 # 101 AirMSPI
 
 ct_net:
-  pred_type: 'differentiable_max'
+  pred_type: 'differentiable_max_correct' #'differentiable_max'
   prob_gain: 10
   conf_type: 'entropy' #conf_interval prob std rel_prob
   decoder_batchify: True
   stop_encoder_grad: True
   encoder_mode: 'train'
+
 
 
 decoder:

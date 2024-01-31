@@ -34,16 +34,9 @@ CE = torch.nn.CrossEntropyLoss(reduction='mean')
 CE_mask = torch.nn.BCELoss(reduction='mean')
 
 
-# def build_criterion(args):
-#     weight = torch.ones(args.num_classes)
-#     weight[args.eos_index] = args.eos_loss_coef
-#     criterion = torch.nn.CrossEntropyLoss(weight=weight, ignore_index=args.padding_index)
-#
-#     device = torch.device('cuda')
-#     criterion = criterion.to(device)
-#     return criterion
 
-@hydra.main(config_path=CONFIG_DIR, config_name="train")
+
+@hydra.main(config_path=CONFIG_DIR, config_name="train", version_base='1.1')
 def main(cfg: DictConfig):
 
     # Set the relevant seeds for reproducibility.
@@ -64,8 +57,6 @@ def main(cfg: DictConfig):
         device = "cpu"
 
     # Load the training/validation data.
-    current_dir = os.path.dirname(os.path.realpath(__file__))
-    # DATA_DIR = os.path.join(current_dir, "data")
     if "AirMSPI" in cfg.data.dataset_name:
         train_dataset, val_dataset = get_airmspi_datasets(
             cfg=cfg

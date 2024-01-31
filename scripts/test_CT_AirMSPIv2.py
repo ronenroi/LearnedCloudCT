@@ -24,7 +24,7 @@ from  ProbCT.scene.cameras import AirMSPICameras
 from scene.volumes import Volumes
 import scipy.io as sio
 from ProbCT import *
-from renderer.shdom_renderer import DiffRendererSHDOM_Airmspi
+from renderer.shdom_renderer import DiffRendererSHDOM_AirMSPI
 
 CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)),"../", "configs")
 
@@ -183,7 +183,7 @@ def main(cfg: DictConfig):
         assert len(est_vols)==1 ##TODO support validation with batch larger than 1
         est_vols[est_vols<0] = 0
         if cfg.rerender:
-            diff_renderer_shdom = DiffRendererSHDOM_Airmspi(cfg=cfg)
+            diff_renderer_shdom = DiffRendererSHDOM_AirMSPI(cfg=cfg)
             cloud = est_vols[0]
             loss = diff_renderer_shdom.render(cloud,masks[0],val_volume,gt_image, [projection_list])
 

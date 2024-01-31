@@ -14,7 +14,7 @@ checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-04-09_AirMSP
 #checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2023-04-10_AirMSPI_BOMEX_aux_8cams_V2_drop_index1_0_0.5_50_ce_weight_zero1/13-16-08/checkpoints/cp_45000.pth'
 gpu: 0
 data:
-  dataset_name: '32N123W_experiment_234_clouds' # '32N123W_experiment_234_clouds' #'32N123W_experiment_all_clouds' #'CASS_600CCN_roiprocess_10cameras_20m'
+  dataset_name: '32N123W_experiment_234_clouds' # '32N123W_experiment_234_clouds' #'AirMSPI_32N123W_experiment_all_clouds' #'CASS_600CCN_roiprocess_10cameras_20m'
   n_training: -1
   n_val: 40
 #  n_cam: 10
@@ -33,6 +33,7 @@ optimizer:
   lr_scheduler_gamma: 0.1
   loss: 'L2_relative_error' #'L2_relative_error' # 'CE'
   ce_weight_zero: True
+
 cross_entropy:
   min: 0
 #  max: 300

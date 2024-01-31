@@ -33,14 +33,7 @@ from scene.cameras import PerspectiveCameras
 CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)),"../", "configs")
 CE = torch.nn.CrossEntropyLoss(reduction='mean')
 
-# def build_criterion(args):
-#     weight = torch.ones(args.num_classes)
-#     weight[args.eos_index] = args.eos_loss_coef
-#     criterion = torch.nn.CrossEntropyLoss(weight=weight, ignore_index=args.padding_index)
-#
-#     device = torch.device('cuda')
-#     criterion = criterion.to(device)
-#     return criterion
+
 
 @hydra.main(config_path=CONFIG_DIR, config_name="train_airmspi")
 def main(cfg: DictConfig):

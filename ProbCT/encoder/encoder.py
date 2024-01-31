@@ -338,7 +338,7 @@ class Backbone(nn.Module):
     def from_cfg(cls, cfg):
         return cls(
             cfg.backbone.name,
-            cfg.data.image_size,
+            cfg.data.image_size if hasattr(cfg.data, 'image_size') else -1,
             pretrained=cfg.backbone.pretrained,
             num_layers=cfg.backbone.num_layers,
             index_interp=cfg.backbone.index_interp,

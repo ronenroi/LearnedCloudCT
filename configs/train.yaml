@@ -4,17 +4,15 @@ defaults:
 
 hydra:
   run:
-    dir: ../outputs/${now:%Y-%m-%d}_BOMEX_500CCN_10cameras_20m/${now:%H-%M-%S}
-#    dir: ../outputs/${now:%Y-%m-%d}_Tmp/${now:%H-%M-%S}
-#
+    dir: ../outputs/${now:%Y-%m-%d}_probct_model/${now:%H-%M-%S}
+
 resume: False
 stats_print_interval: 25
 validation_iter_interval: 2500
 checkpoint_iteration_interval: 5000
 checkpoint_resume_path: ''
-
-
 gpu: 0
+
 #ALL_DATASETS = ("Toy_10cameras_20m","Toy2_10cameras_20m","BOMEX_CASS_10cameras_20m", "CASS_10cameras_20m", "CASS_10cameras_50m", "BOMEX_10cameras_20m",''
 #                "BOMEX_10cameras_50m", "BOMEX_32cameras_20m", "BOMEX_32cameras_50m", "BOMEX_10cameras_20m_varying_S", "BOMEX_10cameras_20m_varying_M",
 #                "BOMEX_10cameras_20m_varying_L", "BOMEX_10cameras_20m_varying_XL",
@@ -27,39 +25,42 @@ gpu: 0
 #                "DYCOMS_RF02_50CCN_10cameras_20m",
 #                )
 data:
-  dataset_name: BOMEX_5000CCN_new_10cameras_20m
-  #Multi-class training is possible: ['CASS_600CCN_roiprocess_10cameras_20m','HAWAII_2000CCN_10cameras_20m','BOMEX_50CCN_10cameras_20m','BOMEX_10cameras_20m']
+  dataset_name: BOMEX_50CCN_10cameras_20m
+  # Multi-class training is possible: ['CASS_600CCN_roiprocess_10cameras_20m','HAWAII_2000CCN_10cameras_20m','BOMEX_50CCN_10cameras_20m','BOMEX_10cameras_20m']
+  # dataset_name: AirMSPI_BOMEX_aux_9cams # AirMSPI training data
   n_training: -1
   n_val: 40
-  noise: True
+#  noise: True # False for AirMSPI
+#  drop_index: 1 # for AirMSPI cross-validation image consistency
+#  n_cam: 8 # for AirMSPI cross-validation image consistency
 
 optimizer:
   lr: 5.0e-05
   wd: 1.0e-05
   loss: 'CE' #'L2_relative_error' or 'CE'
   ce_weight_zero: True
-#  BBSE_ratio: False
   CE_weight_zero: 0.01
+#  CE_weight_zero: 0.1 # for AirMSPI
 
 ct_net:
-  n_query: 1000
-#  stop_encoder_grad: False
-#  pred_type: 'differentiable_max'
-#  prob_gain: 10
-#  conf_type: 'entropy' #conf_interval prob std rel_prob
+  n_query: 100
   encoder_mode: 'train'
 
 backbone:
   name: 'resnet50_fpn' #'swin_v2_t' 'resnet50_fpn' 'resnet34' fasterrcnn_resnet50_fpn
   pretrained: False
+#  sampling_support: 6 # for AirMSPI
+#  sampling_output_size: 18 # for AirMSPI
+#  out_channels: 64 # for AirMSPI
+#  n_sampling_nets: 8 # for AirMSPI cross-validation image consistency
 
 cross_entropy:
   min: 0
-  max: 300
-  bins: 301
+  max: 300 # 100 AirMSPI
+  bins: 301 # 101 AirMSPI
 
 decoder:
-  name: 'FixCTv4_CE' #'CE' #FixCTv4_CE
+  name: 'FixCTv4_CE'
 
 ### In development
 #  apply_lora: True

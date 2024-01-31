@@ -22,8 +22,7 @@ import scipy.io as sio
 
 from dataloader.dataset import get_cloud_datasets, trivial_collate
 from ProbCT.CTnetV2 import *
-from omegaconf import OmegaConf
-from omegaconf import DictConfig
+from omegaconf import OmegaConf, DictConfig
 from ProbCT.util.plot_util import *
 from ProbCT.util.visualization import SummaryWriter
 from ProbCT.util.discritize import get_pred_and_conf_from_discrete

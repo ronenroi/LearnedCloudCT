@@ -16,33 +16,26 @@
 import warnings
 import hydra
 import numpy as np
+from omegaconf import OmegaConf, DictConfig
 
 from dataloader.dataset import get_cloud_datasets, trivial_collate
+from dataloader.airmspi_dataset import get_real_world_airmspi_datasets_ft
 from ProbCT.util.visualization import SummaryWriter
 from ProbCT.CTnetV2 import *
 from ProbCT.CTnet import CTnet
 from ProbCT.util.stats import Stats
-from ProbCT.util.discritize import get_pred_and_conf_from_discrete, to_discrete, get_pred_from_discrete
-from omegaconf import DictConfig
-from metrics.test_errors import *
+from ProbCT.util.discritize import get_pred_and_conf_from_discrete, get_pred_from_discrete
 from metrics.test_errors import *
 from scene.volumes import Volumes
 from scene.cameras import PerspectiveCameras
-from renderer.shdom_renderer import DiffRendererSHDOM
+from renderer.shdom_renderer import DiffRendererSHDOM, DiffRendererSHDOM_AirMSPI
 
 CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)),"../", "configs")
 CE = torch.nn.CrossEntropyLoss(reduction='mean')
 
-# def build_criterion(args):
-#     weight = torch.ones(args.num_classes)
-#     weight[args.eos_index] = args.eos_loss_coef
-#     criterion = torch.nn.CrossEntropyLoss(weight=weight, ignore_index=args.padding_index)
-#
-#     device = torch.device('cuda')
-#     criterion = criterion.to(device)
-#     return criterion
 
-@hydra.main(config_path=CONFIG_DIR, config_name="ft_train")
+
+@hydra.main(config_path=CONFIG_DIR, config_name="ft_train", version_base='1.1')
 def main(cfg: DictConfig):
 
     # Set the relevant seeds for reproducibility.
@@ -62,18 +55,38 @@ def main(cfg: DictConfig):
         )
         device = "cpu"
 
+
+    log_dir = os.getcwd()
+    writer = SummaryWriter(log_dir)
+    checkpoint_dir = os.path.join(log_dir, 'checkpoints')
+    checkpoint_resume_path = os.path.join(hydra.utils.get_original_cwd(), cfg.checkpoint_resume_path)
+
+
+
+    resume_cfg_path = os.path.join(checkpoint_resume_path.split('/checkpoints')[0], '.hydra/config.yaml')
+    net_cfg = OmegaConf.load(resume_cfg_path)
+    cfg = OmegaConf.merge(net_cfg, cfg)
     # Load the training/validation data.
     current_dir = os.path.dirname(os.path.realpath(__file__))
     # DATA_DIR = os.path.join(current_dir, "data")
-    train_dataset, val_dataset = get_cloud_datasets(
-        cfg=cfg
-    )
+    if "AirMSPI" in cfg.data.dataset_name:
+        train_dataset = get_real_world_airmspi_datasets_ft(
+            cfg=cfg
+        )
+        imagery = 'airmspi'
+        val_dataset = None
+    else:
+        train_dataset, val_dataset = get_cloud_datasets(
+            cfg=cfg
+        )
+        imagery = 'cloudct'
+
 
     # Initialize the CT model.
-    if cfg.version == 'V1':
-        model = CTnet(cfg=cfg, n_cam=cfg.data.n_cam)
-    else:
-        model = CTnetV2(cfg=cfg, n_cam=cfg.data.n_cam)
+    # if cfg.version == 'V1':
+    #     model = CTnet(cfg=cfg, n_cam=cfg.data.n_cam)
+    # else:
+    model = CTnetV2(cfg=cfg, n_cam=cfg.data.n_cam)
     # Move the model to the relevant device.
     model.to(device)
     # Init stats to None before loading.
@@ -82,10 +95,7 @@ def main(cfg: DictConfig):
     start_epoch = 0
 
     #
-    log_dir = os.getcwd()
-    writer = SummaryWriter(log_dir)
-    checkpoint_dir = os.path.join(log_dir, 'checkpoints')
-    checkpoint_resume_path = os.path.join(hydra.utils.get_original_cwd(), cfg.checkpoint_resume_path)
+
     if len(checkpoint_dir) > 0:
         # Make the root of the experiment directory.
         # checkpoint_dir = os.path.split(checkpoint_path)
@@ -142,12 +152,14 @@ def main(cfg: DictConfig):
     )
 
     # The validation dataloader is just an endless stream of random samples.
-    val_dataloader = torch.utils.data.DataLoader(
-        val_dataset,
-        batch_size=1,
-        num_workers=4,
-        collate_fn=trivial_collate,
-    )
+    val_dataloader = None
+    if val_dataset is not None:
+        val_dataloader = torch.utils.data.DataLoader(
+            val_dataset,
+            batch_size=1,
+            num_workers=4,
+            collate_fn=trivial_collate,
+        )
     err = torch.nn.MSELoss()
     if cfg.optimizer.ce_weight_zero:
         w = torch.ones(cfg.cross_entropy.bins, device=device)
@@ -157,18 +169,27 @@ def main(cfg: DictConfig):
     # err = torch.nn.L1Loss(reduction='sum')
     # Set the model to the training mode.
     model.train().float()
-    diff_renderer_shdom = DiffRendererSHDOM(cfg=cfg)
+    if imagery == 'cloudct':
+        diff_renderer_shdom = DiffRendererSHDOM(cfg=cfg)
+    elif imagery == 'airmspi':
+        diff_renderer_shdom = DiffRendererSHDOM_AirMSPI(cfg=cfg)
+    else:
+        NotImplementedError()
 
     if cfg.ct_net.stop_encoder_grad:
         for name, param in model.named_parameters():
             # if 'decoder.decoder.2.mlp.7' in name or 'decoder.decoder.3' in name:
-            # if 'decoder' in name and not 'mask_decoder' in name:
-            if 'lora' in name:
-            # if '.bn' in name:
-
-                param.requires_grad = True
+            if hasattr(cfg.decoder,'apply_lora') and cfg.decoder.apply_lora:
+                if 'lora' in name:
+                    param.requires_grad = True
+                else:
+                    param.requires_grad = False
             else:
-                param.requires_grad = False
+                if 'decoder' in name and not 'mask_decoder' in name:
+                    param.requires_grad = True
+                else:
+                    param.requires_grad = False
+
         if cfg.ct_net.encoder_mode == 'eval':
             model._image_encoder.eval()
             model.mlp_cam_center.eval()
@@ -179,7 +200,7 @@ def main(cfg: DictConfig):
     # Run the main training loop.
     iteration = 0
 
-    if writer:
+    if writer and val_dataloader is not None:
         val_scatter_ind = np.random.permutation(len(val_dataloader))[:5]
     est_vols = []
     volumes = []
@@ -193,19 +214,30 @@ def main(cfg: DictConfig):
             if iteration in cfg.optimizer.iter_steps:
                 # Adjust the learning rate.
                 lr_scheduler.step()
+            if imagery == 'airmspi':
+                images, grid, mapping, centers, masks, shdom_proj_list = batch
+                cameras = AirMSPICameras(mapping=torch.tensor(np.array(mapping)).float(),
+                                         centers=torch.tensor(np.array(centers)).float(),
+                                             device=device)
+                volume = Volumes(torch.unsqueeze(torch.tensor(np.array(masks), device=device).float(), 1), grid)
 
-            images, extinction, grid, image_sizes, projection_matrix, camera_center, masks, cloud_path = batch#[0]#.values()
-            volume = Volumes(torch.unsqueeze(torch.tensor(extinction, device=device).float(),1), grid)
-
-            if model.mask_type == 'gt_mask':
-                masks = volume.extinctions[0] > volume._ext_thr
+            else:
+                images, extinction, grid, image_sizes, projection_matrix, camera_center, masks, cloud_path = batch#[0]#.values()
+                cameras = PerspectiveCameras(image_size=image_sizes,
+                                             P=torch.tensor(np.array(projection_matrix), device=device).float(),
+                                             camera_center=torch.tensor(np.array(camera_center), device=device).float(),
+                                             device=device)
+                cloud_path = cloud_path[0].split('cloud_results_')[-1].split('.pkl')[0]
+                volume = Volumes(torch.unsqueeze(torch.tensor(extinction, device=device).float(), 1), grid)
+                if model.mask_type == 'gt_mask':
+                   masks = volume.extinctions[0] > volume._ext_thr
             masks = [torch.tensor(mask) if mask is not None else mask for mask in masks]
             if torch.sum(torch.tensor([(mask).sum() if mask is not None else mask for mask in masks])) == 0:
                 print('Empty mask skip')
                 continue
             images = torch.tensor(np.array(images), device=device).float()
-            cameras = PerspectiveCameras(image_size=image_sizes,P=torch.tensor(projection_matrix, device=device).float(),
-                                         camera_center= torch.tensor(camera_center, device=device).float(), device=device)
+            # cameras = PerspectiveCameras(image_size=image_sizes,P=torch.tensor(projection_matrix, device=device).float(),
+            #                              camera_center= torch.tensor(camera_center, device=device).float(), device=device)
 
 
             optimizer.zero_grad()
@@ -243,7 +275,12 @@ def main(cfg: DictConfig):
             print(mask_conf.sum())
             images = images.cpu().numpy()
             # print(est_vol[extinction[0]>0].mean().item())
-            loss = diff_renderer_shdom.render(est_vol, mask_conf, volume, images, cloud_index=cloud_path[0].split('cloud_results_')[-1].split('.pkl')[0])
+
+
+            if imagery == 'airmspi':
+                loss = diff_renderer_shdom.render([est_vol], [mask_conf], [volume], images, [shdom_proj_list])
+            else:
+                loss = diff_renderer_shdom.render(est_vol, mask_conf, volume, images, cloud_index=cloud_path)
             # gt_vol = extinction[0]
             # M = masks[0].detach().cpu()
             # if conf_vol is not None:
@@ -316,7 +353,7 @@ def main(cfg: DictConfig):
             #     torch.cuda.empty_cache()
             # Validation
             # for mode in range(2)
-            if iteration % cfg.validation_iter_interval == 0 and iteration > 0:
+            if iteration % cfg.validation_iter_interval == 0 and iteration > 0 and val_dataloader is not None:
                 optimizer.zero_grad()
                 del images
                 loss_val = 0
@@ -404,7 +441,7 @@ def main(cfg: DictConfig):
                 #     torch.cuda.empty_cache()
                 # model.decoder.train()
 
-                # Checkpoint.
+            # Checkpoint.
             if (
                 iteration % cfg.checkpoint_iteration_interval == 0
                 and len(checkpoint_dir) > 0

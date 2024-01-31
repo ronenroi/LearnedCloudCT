@@ -258,19 +258,19 @@ class DiffRendererSHDOM(object):
         else:
             albedo = self.cloud_generator.get_albedo(self.wavelength, albedo_grid)
 
-            path = '/wdata/roironen/Data/CASS_256x256x139_600CCN_50m_32x32x32_roipreprocess/10cameras_20m/medium_3827.pkl'
-            medium = shdom.Medium()
-            medium.load(path)
+            # path = '/wdata/roironen/Data/CASS_256x256x139_600CCN_50m_32x32x32_roipreprocess/10cameras_20m/medium_3827.pkl'
+            # medium = shdom.Medium()
+            # medium.load(path)
+            #
+            #
+            # cloud = medium.get_scatterer('cloud')
+            # cloud.resample(grid)
+            # cloud._reff = self.cloud_generator.get_reff(grid)
+            # # medium.scatterers['cloud']._veff._data[:,:,:] = 0.01
+            # cloud._veff._data[cloud_extinction>0] = self.cloud_generator.get_veff(grid)._data[cloud_extinction>0]
+            # phase = cloud.get_phase(self.wavelength)
 
-
-            cloud = medium.get_scatterer('cloud')
-            cloud.resample(grid)
-            cloud._reff = self.cloud_generator.get_reff(grid)
-            # medium.scatterers['cloud']._veff._data[:,:,:] = 0.01
-            cloud._veff._data[cloud_extinction>0] = self.cloud_generator.get_veff(grid)._data[cloud_extinction>0]
-            phase = cloud.get_phase(self.wavelength)
-
-        # phase = self.cloud_generator.get_phase(self.wavelength, mask=cloud_extinction>1.0, grid = phase_grid)
+        phase = self.cloud_generator.get_phase(self.wavelength, mask=cloud_extinction>1.0, grid = phase_grid)
 
         ext = self.cloud_generator.get_extinction(grid=grid)
         ext._data[mask] = cloud_extinction[mask]
@@ -562,7 +562,7 @@ class DiffRendererSHDOM(object):
     #     return self.loss_operator(l2_loss)
 
 
-class DiffRendererSHDOM_Airmspi(object):
+class DiffRendererSHDOM_AirMSPI(object):
     """
     Optimize: Extinction
     --------------------
@@ -685,8 +685,8 @@ class DiffRendererSHDOM_Airmspi(object):
         # cloud._veff._data[cloud_extinction>0] = self.cloud_generator.get_veff(grid)._data[cloud_extinction>0]
         # phase = cloud.get_phase(self.wavelength)
 
-        phase = self.cloud_generator.get_phase(self.wavelength, grid = phase_grid)
-        # phase = self.cloud_generator.get_phase(self.wavelength, mask=cloud_extinction>1.0, grid = phase_grid)
+        # phase = self.cloud_generator.get_phase(self.wavelength, grid = phase_grid)
+        phase = self.cloud_generator.get_phase(self.wavelength, mask=cloud_extinction>1.0, grid = phase_grid)
 
         ext = self.cloud_generator.get_extinction(grid=grid)
         ext._data[mask] = cloud_extinction[mask]

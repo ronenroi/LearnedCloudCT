@@ -27,29 +27,18 @@ from dataloader.airmspi_dataset import get_real_world_airmspi_datasets_ft
 from ProbCT.CTnet import CTnet
 from ProbCT.util.stats import Stats
 from omegaconf import DictConfig
-from metrics.test_errors import *
-from metrics.losses import *
-from ProbCT import *
+from ProbCT.util.discritize import get_pred_and_conf_from_discrete, to_discrete, get_pred_from_discrete
 from scene.volumes import Volumes
 from scene.cameras import PerspectiveCameras
-from renderer.shdom_renderer import DiffRendererSHDOM_Airmspi, LossSHDOM
-# from shdom.shdom_nn import *
-import matplotlib.pyplot as plt
-
+from renderer.shdom_renderer import DiffRendererSHDOM_AirMSPI
+from metrics.test_errors import *
 
 CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)),"../", "configs")
 CE = torch.nn.CrossEntropyLoss(reduction='mean')
 
-# def build_criterion(args):
-#     weight = torch.ones(args.num_classes)
-#     weight[args.eos_index] = args.eos_loss_coef
-#     criterion = torch.nn.CrossEntropyLoss(weight=weight, ignore_index=args.padding_index)
-#
-#     device = torch.device('cuda')
-#     criterion = criterion.to(device)
-#     return criterion
 
-@hydra.main(config_path=CONFIG_DIR, config_name="vipctV2_train_airmspi_ft")
+
+@hydra.main(config_path=CONFIG_DIR, config_name="ft_train_airmspi")
 def main(cfg: DictConfig):
 
     # Set the relevant seeds for reproducibility.
@@ -164,7 +153,7 @@ def main(cfg: DictConfig):
     # err = torch.nn.L1Loss(reduction='sum')
     # Set the model to the training mode.
     model.train().float()
-    diff_renderer_shdom = DiffRendererSHDOM_Airmspi(cfg=cfg)
+    diff_renderer_shdom = DiffRendererSHDOM_AirMSPI(cfg=cfg)
 
     if cfg.ct_net.stop_encoder_grad:
         for name, param in model.named_parameters():
@@ -302,92 +291,92 @@ def main(cfg: DictConfig):
             # with torch.cuda.device(device=device):
             #     torch.cuda.empty_cache()
             # Validation
-            if iteration % cfg.validation_iter_interval == 0 and iteration > 0:
-                loss_val = 0
-                relative_err= 0
-                relative_mass_err = 0
-                val_i = 0
-                for val_i, val_batch in enumerate(val_dataloader):
-
-                # val_batch = next(val_dataloader.__iter__())
-
-                    val_image, extinction, grid, image_sizes, projection_matrix, camera_center, masks = val_batch#[0]#.values()
-                    val_image = torch.tensor(val_image, device=device).float()
-                    val_volume = Volumes(torch.unsqueeze(torch.tensor(extinction, device=device).float(), 1), grid)
-                    val_camera = PerspectiveCameras(image_size=image_sizes,P=torch.tensor(projection_matrix, device=device).float(),
-                                         camera_center= torch.tensor(camera_center, device=device).float(), device=device)
-                    masks = [torch.tensor(mask) if mask is not None else mask for mask in masks]
-                    if model.val_mask_type == 'gt_mask':
-                        masks = val_volume.extinctions > val_volume._ext_thr
-                    if torch.sum(torch.tensor([(mask).sum() if mask is not None else mask for mask in masks])) == 0:
-                        continue
-                # Activate eval mode of the model (lets us do a full rendering pass).
-                    model.eval()
-                    with torch.no_grad():
-                        val_out = model(
-                            val_camera,
-                            val_image,
-                            val_volume,
-                            masks
-                        )
-                        if cfg.version == 'V2':
-                            val_out["output"] = get_pred_from_discrete(val_out["output"], cfg.cross_entropy.min,
-                                                              cfg.cross_entropy.max, cfg.cross_entropy.bins)
-
-                        est_vols = torch.zeros(torch.squeeze(val_volume.extinctions,1).shape, device=val_volume.device)
-                        if cfg.ct_net.use_neighbours:
-                            val_out["output"] = [ext_est.reshape(-1, 3, 3, 3)[:, 1, 1, 1].unsqueeze(-1) for ext_est in val_out["output"]]
-                        if val_out['query_indices'] is None:
-                            for i, (out_vol, m) in enumerate(zip(val_out["output"], masks)):
-                                est_vols[i][m.squeeze(0)] = out_vol.squeeze(1)
-                        else:
-                            for est_vol, out_vol, m in zip(est_vols, val_out["output"], val_out['query_indices']):
-                                est_vol.reshape(-1)[m] = out_vol.reshape(-1)  # .reshape(m.shape)[m]
-                        assert len(est_vols)==1 ##TODO support validation with batch larger than 1
-                        gt_vol = val_volume.extinctions[0].squeeze()
-                        est_vol = est_vols.squeeze()
-                        if cfg.optimizer.loss == 'L2_relative_error':
-                            loss_val += err(est_vol.squeeze(), gt_vol.squeeze()) / (torch.norm(gt_vol.squeeze())**2 / gt_vol.shape[0] + 1e-2)
-                        elif cfg.optimizer.loss == 'L2':
-                            loss_val += err(est_vol.squeeze(), gt_vol.squeeze())
-                        elif cfg.optimizer.loss == 'L1_relative_error':
-                            loss_val += relative_error(ext_est=est_vol,ext_gt=gt_vol)
-                        # elif cfg.optimizer.loss == 'CE':
-                        #     loss = [CE(ext_est,
-                        #                to_discrete(ext_gt, cfg.cross_entropy.min, cfg.cross_entropy.max,
-                        #                            cfg.cross_entropy.bins))
-                        #             for ext_est, ext_gt in zip(val_out["output"], out["volume"])]
-                        # loss_val += l1(val_out["output"], val_out["volume"]) / torch.sum(val_out["volume"]+1000)
-
-                        relative_err += relative_error(ext_est=est_vol,ext_gt=gt_vol)#torch.norm(val_out["output"] - val_out["volume"], p=1) / (torch.norm(val_out["volume"], p=1) + 1e-6)
-                        relative_mass_err += relative_mass_error(ext_est=est_vol,ext_gt=gt_vol)#(torch.norm(val_out["output"], p=1) - torch.norm(val_out["volume"], p=1)) / (torch.norm(val_out["volume"], p=1) + 1e-6)
-                        if writer:
-                            writer._iter = iteration
-                            writer._dataset = 'val'  # .format(val_i)
-                            if val_i in val_scatter_ind:
-                                writer.monitor_scatter_plot(est_vol, gt_vol,ind=val_i)
-                    # Update stats with the validation metrics.
-
-                loss_val /= (val_i + 1)
-                relative_err /= (val_i + 1)
-                relative_mass_err /= (val_i+1)
-                stats.update({"loss": float(loss_val), "relative_error": float(relative_err)}, stat_set="val")
-
-                if writer:
-                    writer._iter = iteration
-                    writer._dataset = 'val'#.format(val_i)
-                    writer.monitor_loss(loss_val)
-                    writer.monitor_scatterer_error(relative_mass_err, relative_err)
-                    # writer.monitor_images(val_image)
-
-                stats.print(stat_set="val")
-                # Set the model back to train mode.
-                del val_camera, val_image, val_volume, masks
-                # with torch.cuda.device(device=device):
-                #     torch.cuda.empty_cache()
-                model.train()
-
-                # Checkpoint.
+            # if iteration % cfg.validation_iter_interval == 0 and iteration > 0:
+            #     loss_val = 0
+            #     relative_err= 0
+            #     relative_mass_err = 0
+            #     val_i = 0
+            #     for val_i, val_batch in enumerate(val_dataloader):
+            #
+            #     # val_batch = next(val_dataloader.__iter__())
+            #
+            #         val_image, extinction, grid, image_sizes, projection_matrix, camera_center, masks = val_batch#[0]#.values()
+            #         val_image = torch.tensor(val_image, device=device).float()
+            #         val_volume = Volumes(torch.unsqueeze(torch.tensor(extinction, device=device).float(), 1), grid)
+            #         val_camera = PerspectiveCameras(image_size=image_sizes,P=torch.tensor(projection_matrix, device=device).float(),
+            #                              camera_center= torch.tensor(camera_center, device=device).float(), device=device)
+            #         masks = [torch.tensor(mask) if mask is not None else mask for mask in masks]
+            #         if model.val_mask_type == 'gt_mask':
+            #             masks = val_volume.extinctions > val_volume._ext_thr
+            #         if torch.sum(torch.tensor([(mask).sum() if mask is not None else mask for mask in masks])) == 0:
+            #             continue
+            #     # Activate eval mode of the model (lets us do a full rendering pass).
+            #         model.eval()
+            #         with torch.no_grad():
+            #             val_out = model(
+            #                 val_camera,
+            #                 val_image,
+            #                 val_volume,
+            #                 masks
+            #             )
+            #             if cfg.version == 'V2':
+            #                 val_out["output"] = get_pred_from_discrete(val_out["output"], cfg.cross_entropy.min,
+            #                                                   cfg.cross_entropy.max, cfg.cross_entropy.bins)
+            #
+            #             est_vols = torch.zeros(torch.squeeze(val_volume.extinctions,1).shape, device=val_volume.device)
+            #             if cfg.ct_net.use_neighbours:
+            #                 val_out["output"] = [ext_est.reshape(-1, 3, 3, 3)[:, 1, 1, 1].unsqueeze(-1) for ext_est in val_out["output"]]
+            #             if val_out['query_indices'] is None:
+            #                 for i, (out_vol, m) in enumerate(zip(val_out["output"], masks)):
+            #                     est_vols[i][m.squeeze(0)] = out_vol.squeeze(1)
+            #             else:
+            #                 for est_vol, out_vol, m in zip(est_vols, val_out["output"], val_out['query_indices']):
+            #                     est_vol.reshape(-1)[m] = out_vol.reshape(-1)  # .reshape(m.shape)[m]
+            #             assert len(est_vols)==1 ##TODO support validation with batch larger than 1
+            #             gt_vol = val_volume.extinctions[0].squeeze()
+            #             est_vol = est_vols.squeeze()
+            #             if cfg.optimizer.loss == 'L2_relative_error':
+            #                 loss_val += err(est_vol.squeeze(), gt_vol.squeeze()) / (torch.norm(gt_vol.squeeze())**2 / gt_vol.shape[0] + 1e-2)
+            #             elif cfg.optimizer.loss == 'L2':
+            #                 loss_val += err(est_vol.squeeze(), gt_vol.squeeze())
+            #             elif cfg.optimizer.loss == 'L1_relative_error':
+            #                 loss_val += relative_error(ext_est=est_vol,ext_gt=gt_vol)
+            #             # elif cfg.optimizer.loss == 'CE':
+            #             #     loss = [CE(ext_est,
+            #             #                to_discrete(ext_gt, cfg.cross_entropy.min, cfg.cross_entropy.max,
+            #             #                            cfg.cross_entropy.bins))
+            #             #             for ext_est, ext_gt in zip(val_out["output"], out["volume"])]
+            #             # loss_val += l1(val_out["output"], val_out["volume"]) / torch.sum(val_out["volume"]+1000)
+            #
+            #             relative_err += relative_error(ext_est=est_vol,ext_gt=gt_vol)#torch.norm(val_out["output"] - val_out["volume"], p=1) / (torch.norm(val_out["volume"], p=1) + 1e-6)
+            #             relative_mass_err += relative_mass_error(ext_est=est_vol,ext_gt=gt_vol)#(torch.norm(val_out["output"], p=1) - torch.norm(val_out["volume"], p=1)) / (torch.norm(val_out["volume"], p=1) + 1e-6)
+            #             if writer:
+            #                 writer._iter = iteration
+            #                 writer._dataset = 'val'  # .format(val_i)
+            #                 if val_i in val_scatter_ind:
+            #                     writer.monitor_scatter_plot(est_vol, gt_vol,ind=val_i)
+            #         # Update stats with the validation metrics.
+            #
+            #     loss_val /= (val_i + 1)
+            #     relative_err /= (val_i + 1)
+            #     relative_mass_err /= (val_i+1)
+            #     stats.update({"loss": float(loss_val), "relative_error": float(relative_err)}, stat_set="val")
+            #
+            #     if writer:
+            #         writer._iter = iteration
+            #         writer._dataset = 'val'#.format(val_i)
+            #         writer.monitor_loss(loss_val)
+            #         writer.monitor_scatterer_error(relative_mass_err, relative_err)
+            #         # writer.monitor_images(val_image)
+            #
+            #     stats.print(stat_set="val")
+            #     # Set the model back to train mode.
+            #     del val_camera, val_image, val_volume, masks
+            #     # with torch.cuda.device(device=device):
+            #     #     torch.cuda.empty_cache()
+            #     model.train()
+            #
+            #     # Checkpoint.
             if (
                 iteration % cfg.checkpoint_iteration_interval == 0
                 and len(checkpoint_dir) > 0
