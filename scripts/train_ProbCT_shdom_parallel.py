@@ -36,7 +36,7 @@ CE = torch.nn.CrossEntropyLoss(reduction='mean')
 
 
 
-@hydra.main(config_path=CONFIG_DIR, config_name="ft_train")
+@hydra.main(config_path=CONFIG_DIR, config_name="ft_train", version_base='1.1')
 def main(cfg: DictConfig):
 
     # Set the relevant seeds for reproducibility.

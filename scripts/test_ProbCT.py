@@ -32,7 +32,7 @@ from scene.cameras import PerspectiveCameras
 
 CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)),"../", "configs")
 
-@hydra.main(config_path=CONFIG_DIR, config_name="test")
+@hydra.main(config_path=CONFIG_DIR, config_name="test", version_base='1.1')
 def main(cfg: DictConfig):
 
     # Set the relevant seeds for reproducibility
@@ -71,11 +71,8 @@ def main(cfg: DictConfig):
     _, val_dataset = get_cloud_datasets(
         cfg=cfg
     )
-    # Initialize VIP-CT model
-    if cfg.version == 'V1':
-        model = CTnet(cfg=cfg, n_cam=cfg.data.n_cam)
-    else:
-        model = CTnetV2(cfg=cfg, n_cam=cfg.data.n_cam)
+    # Initialize ProbCT model
+    model = CTnetV2(cfg=cfg, n_cam=cfg.data.n_cam)
     # Load model
     assert os.path.isfile(checkpoint_resume_path)
     print(f"Resuming from checkpoint {checkpoint_resume_path}.")

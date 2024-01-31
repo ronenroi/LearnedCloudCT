@@ -35,7 +35,7 @@ mass_error = lambda ext_est, ext_gt, eps=1e-6 : (torch.norm(ext_gt.view(-1),p=1)
 
 CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../configs")
 
-@hydra.main(config_path=CONFIG_DIR, config_name="vip-ct_test")
+@hydra.main(config_path=CONFIG_DIR, config_name="vip-ct_test", version_base='1.1')
 def main(cfg: DictConfig):
 
     # Set the relevant seeds for reproducibility

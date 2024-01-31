@@ -765,7 +765,7 @@ def get_real_world_airmspi_datasets(
     gx = np.linspace(0, dx * (nx-1), nx, dtype=np.float32)
     gy = np.linspace(0, dy * (ny-1), ny, dtype=np.float32)
     gz = np.linspace(0, dz * (nz-1), nz, dtype=np.float32)
-    grid = [np.array([gx, gy, gz])]
+    grid = [np.array([gx, gy, gz], dtype=object)]
     mask = sio.loadmat(mask_path)['mask']
 
     # assert cfg.data.n_training <= 0

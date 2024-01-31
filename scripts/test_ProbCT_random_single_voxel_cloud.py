@@ -42,7 +42,7 @@ import scipy.stats, scipy
 CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)),"../", "configs")
 global probs
 
-@hydra.main(config_path=CONFIG_DIR, config_name="test")
+@hydra.main(config_path=CONFIG_DIR, config_name="test", version_base='1.1')
 def main(cfg: DictConfig):
 
     # Set the relevant seeds for reproducibility

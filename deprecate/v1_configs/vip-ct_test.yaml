@@ -3,7 +3,7 @@ hydra:
     dir: ../test_results/${now:%Y-%m-%d}/${now:%H-%M-%S}
 seed: 3
 debug: False
-gpu: 3
+gpu: 0
 save_results: False
 show: False
 checkpoint_resume_path: '/wdata/roironen/Deploy/ProbCT/outputs/2022-03-31_BOMEX_Res50_FPN_512channels_Sampl_3_9_10cams_L2_relative_LR5.0e-05_FixCTv4_wd1.0e-05_n_sampling_nets10/00-36-48/checkpoints/cp_130000.pth'

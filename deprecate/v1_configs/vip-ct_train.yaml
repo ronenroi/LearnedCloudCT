@@ -8,7 +8,7 @@ stats_print_interval: 25
 validation_iter_interval: 2500
 checkpoint_iteration_interval: 5000
 checkpoint_resume_path: ''
-gpu: 3
+gpu: 0
 data:
   dataset_name: 'CASS_600CCN_roiprocess_10cameras_20m'
   n_training: -1

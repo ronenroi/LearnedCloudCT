@@ -25,7 +25,7 @@ import scipy.io as sio
 
 CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../configs")
 
-@hydra.main(config_path=CONFIG_DIR, config_name="vip-ct_test_airmspi")
+@hydra.main(config_path=CONFIG_DIR, config_name="vip-ct_test_airmspi", version_base='1.1')
 def main(cfg: DictConfig):
 
     # Set the relevant seeds for reproducibility

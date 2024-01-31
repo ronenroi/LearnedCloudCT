@@ -58,7 +58,7 @@ def main(cfg: DictConfig):
     net_cfg = OmegaConf.load(resume_cfg_path)
     cfg = OmegaConf.merge(net_cfg,cfg)
 
-    # Initialize VIP-CT model
+    # Initialize ProbCT model
     model = CTnetAirMSPI(cfg=cfg, n_cam=cfg.data.n_cam)
 
     # Load model

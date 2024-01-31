@@ -15,20 +15,19 @@ import os, time
 import warnings
 import hydra
 import numpy as np
-from dataloader.airmspi_dataset import get_real_world_airmspi_datasets, trivial_collate
-from ProbCT.CTnetV2 import *
-
 from omegaconf import OmegaConf
 from omegaconf import DictConfig
-from  ProbCT.scene.cameras import AirMSPICameras
+from dataloader.airmspi_dataset import get_real_world_airmspi_datasets, trivial_collate
+from ProbCT.CTnetV2 import *
+from ProbCT.util.discritize import get_pred_and_conf_from_discrete
+from  scene.cameras import AirMSPICameras
 from scene.volumes import Volumes
 import scipy.io as sio
-from ProbCT import *
 from renderer.shdom_renderer import DiffRendererSHDOM_AirMSPI
 
 CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)),"../", "configs")
 
-@hydra.main(config_path=CONFIG_DIR, config_name="vip-ct_test_airmspiV2")
+@hydra.main(config_path=CONFIG_DIR, config_name="test_airmspi", version_base='1.1')
 def main(cfg: DictConfig):
 
     # Set the relevant seeds for reproducibility
@@ -59,7 +58,7 @@ def main(cfg: DictConfig):
     net_cfg = OmegaConf.load(resume_cfg_path)
     cfg = OmegaConf.merge(net_cfg,cfg)
 
-    # Initialize VIP-CT model
+    # Initialize ProbCT model
     model = CTnetV2(cfg=cfg, n_cam=cfg.data.n_cam)
 
     # Load model
@@ -68,7 +67,11 @@ def main(cfg: DictConfig):
     loaded_data = torch.load(checkpoint_resume_path, map_location=device)
     model.load_state_dict(loaded_data["model"])
     model.to(device)
-    model.eval().float()
+    # Set the model to eval mode.
+    if cfg.ct_net.encoder_mode == 'eval':
+        model._image_encoder.eval()
+        model.mlp_cam_center.eval()
+        model.mlp_xyz.eval()
 
     # for name, param in model.named_parameters():
     #     # if 'decoder.decoder.2.mlp.7' in name or 'decoder.decoder.3' in name:
@@ -133,9 +136,9 @@ def main(cfg: DictConfig):
 
 
     masks = torch.tensor(masks,device=device)[None]
-    val_volume = Volumes(torch.unsqueeze(torch.tensor(masks, device=device).float(), 1), grid)
-    val_camera = AirMSPICameras(mapping=torch.tensor(images_mapping_list, device=device).float(),
-                                  centers=torch.tensor(pixel_centers_list).float(), device=device)
+    val_volume = Volumes(torch.unsqueeze(masks.float(), 1), grid)
+    val_camera = AirMSPICameras(mapping=torch.tensor(np.array(images_mapping_list), device=device).float(),
+                                  centers=torch.tensor(np.array(pixel_centers_list)).float(), device=device)
 
 
 # Activate eval mode of the model (lets us do a full rendering pass).
@@ -151,7 +154,7 @@ def main(cfg: DictConfig):
             val_volume,
             masks
         )
-
+        time_net = time.time() - net_start_time
         if val_out["output"][0].shape[-1]>1:
 
             val_out["output"], val_out["output_conf"], probs = get_pred_and_conf_from_discrete(val_out["output"],
@@ -179,13 +182,13 @@ def main(cfg: DictConfig):
                     prob_vol[m] = probs[0]
                     prob_vol = prob_vol.cpu().numpy()
 
-        time_net = time.time() - net_start_time
+
         assert len(est_vols)==1 ##TODO support validation with batch larger than 1
         est_vols[est_vols<0] = 0
         if cfg.rerender:
             diff_renderer_shdom = DiffRendererSHDOM_AirMSPI(cfg=cfg)
             cloud = est_vols[0]
-            loss = diff_renderer_shdom.render(cloud,masks[0],val_volume,gt_image, [projection_list])
+            loss = diff_renderer_shdom.render([cloud],masks,[val_volume],[gt_image], [[projection_list]])
 
 
         airmspi_cloud = {'cloud':est_vols[0].cpu().numpy(),'prob_vol':prob_vol,
@@ -197,7 +200,7 @@ def main(cfg: DictConfig):
 
     batch_time_net = np.array(batch_time_net)
 
-    print(f'Mean time = {np.mean(batch_time_net)}')
+    print(f'Mean time = {np.mean(batch_time_net)}, RMSE = {np.sqrt(loss)}')
 
 
 if __name__ == "__main__":

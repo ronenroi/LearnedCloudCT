@@ -33,7 +33,7 @@ from scene.cameras import PerspectiveCameras
 
 CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)),"../", "configs")
 
-@hydra.main(config_path=CONFIG_DIR, config_name="test_seq")
+@hydra.main(config_path=CONFIG_DIR, config_name="test_seq", version_base='1.1')
 def main(cfg: DictConfig):
 
     # Set the relevant seeds for reproducibility
@@ -72,7 +72,7 @@ def main(cfg: DictConfig):
     _, val_dataset = get_cloud_datasets(
         cfg=cfg
     )
-    # Initialize VIP-CT model
+    # Initialize ProbCT model
     model = CTnetV2(cfg=cfg, n_cam=cfg.data.n_cam)
 
     # Load model
@@ -91,7 +91,10 @@ def main(cfg: DictConfig):
     )
 
     # Set the model to eval mode.
-    model.eval().float()
+    if cfg.ct_net.encoder_mode == 'eval':
+        model._image_encoder.eval()
+        model.mlp_cam_center.eval()
+        model.mlp_xyz.eval()
 
     iteration = -1
     if writer:

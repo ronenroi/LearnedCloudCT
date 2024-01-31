@@ -82,13 +82,19 @@ LearnedCloudCT/pyshdom4VIP-CT/VIP-CT_scripts
 ### Simulations
 #### Training 
 Set the config file at configs/train.yaml according to the desired experiment, e.g. dataset_name: 'CASS_600CCN_roiprocess_10cameras_20m' / 'BOMEX_50CCN_10cameras_20m' etc.
+
+For training ProbCT model with AirMSPI imaging geometry, change configs/train.yaml accordingly.
+
 Then, run
 
 ```
 python scripts/train_ProbCT.py
 ```
 #### Self-supervised training for image consistancy
-Set the config file at configs/ft_train.yaml according to the desired experiment, e.g. pre-trained model path
+Set the config file at configs/ft_train.yaml according to the desired experiment, e.g. pre-trained model path.
+
+Self-supervised training of ProbCT model on real-world AirMSPI images can be done by setting configs/ft_train.yaml with "AirMSPI_32N123W_experiment_234_clouds" dataset.
+
 Then, run (this script requires both strong GPU and CPU cores)
 
 ```
@@ -96,13 +102,18 @@ python scripts/ft_train_ProbCT.py
 ```
 
 #### Evaluation 
-Set the config file at configs/test.yaml according to the desired experiment and trained model path.
+Set the config file at configs/test.yaml according to the desired experiment and the path of ProbCT trained model.
 Then, run
 
 ```
 python scripts/test_ProbCT.py
 ```
 
+For inference on AirMSPI test images, set the model path in configs/test_airmspi.yaml, and run
+
+```
+python scripts/test_ProbCT_AirMSPI.py
+```
 &nbsp;
 
 If you use this package in an academic publication please acknowledge the appropriate publications (see LICENSE file). 
