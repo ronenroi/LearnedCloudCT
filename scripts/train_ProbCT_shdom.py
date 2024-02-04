@@ -22,7 +22,6 @@ from dataloader.dataset import get_cloud_datasets, trivial_collate
 from dataloader.airmspi_dataset import get_real_world_airmspi_datasets_ft
 from ProbCT.util.visualization import SummaryWriter
 from ProbCT.CTnetV2 import *
-from ProbCT.CTnet import CTnet
 from ProbCT.util.stats import Stats
 from ProbCT.util.discritize import get_pred_and_conf_from_discrete, get_pred_from_discrete
 from metrics.test_errors import *
@@ -32,8 +31,6 @@ from renderer.shdom_renderer import DiffRendererSHDOM, DiffRendererSHDOM_AirMSPI
 
 CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)),"../", "configs")
 CE = torch.nn.CrossEntropyLoss(reduction='mean')
-
-
 
 @hydra.main(config_path=CONFIG_DIR, config_name="ft_train", version_base='1.1')
 def main(cfg: DictConfig):
@@ -194,10 +191,7 @@ def main(cfg: DictConfig):
             model._image_encoder.eval()
             model.mlp_cam_center.eval()
             model.mlp_xyz.eval()
-    # for name, param in model.named_parameters():
-    #     if param.requires_grad:
-    #         print(name)
-    # Run the main training loop.
+
     iteration = 0
 
     if writer and val_dataloader is not None:
@@ -278,7 +272,7 @@ def main(cfg: DictConfig):
 
 
             if imagery == 'airmspi':
-                loss = diff_renderer_shdom.render([est_vol], [mask_conf], [volume], images, [shdom_proj_list])
+                loss = diff_renderer_shdom.render(est_vol, mask_conf, volume, images, shdom_proj_list)
             else:
                 loss = diff_renderer_shdom.render(est_vol, mask_conf, volume, images, cloud_index=cloud_path)
             # gt_vol = extinction[0]
