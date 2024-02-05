@@ -63,6 +63,21 @@ Return to project directory and create data directory:
 cd ../
 mkdir ../../Data
 ```
+&nbsp;
+You can also train the model using different RT engine:
+* The treatment of legacy Fortran code has changed from GCC 9.X to 10.X+ so currently there is a flag in the setup.py script which needs to be commented if trying to install using GCC 9.X or earlier versions.
+The flag is `extra_f77_compile_args=["-fallow-argument-mismatch"]`
+```
+git clone https://github.com/CloudTomography/AT3D.git
+cd AT3D
+pip install "pandas<2.0.0"
+pip install nose2
+pip install xarray
+pip install netcdf4
+pip install bottleneck
+pip install -e .
+cd ../
+```
 
 ## Usage
 

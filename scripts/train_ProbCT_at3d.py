@@ -1,4 +1,4 @@
-# This file contains the main script for VIP-CT and ProbCT training.
+# This file contains the a script for ProbCT training.
 # You are very welcome to use this code. For this, clearly acknowledge
 # the source of this code, and cite the paper described in the readme file.
 #

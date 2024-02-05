@@ -82,10 +82,10 @@ class DiffRendererAT3D(object):
 
 
         self.state_gen = None
-        self.n_jobs = cfg.shdom.n_jobs
+        self.n_jobs = cfg.renderer.n_jobs
         self.min_bound = cfg.cross_entropy.min
         self.max_bound = cfg.cross_entropy.max
-        self.use_forward_grid = cfg.shdom.use_forward_grid
+        self.use_forward_grid = cfg.renderer.use_forward_grid
         with open('/wdata/roironen/Data/at3d_optical_property_generator.pkl', 'rb') as f:
             self.optical_property_generator = pickle.load(f)
 
@@ -148,9 +148,9 @@ class DiffRendererAT3D(object):
         # optical_properties['reff'].values = np.full(optical_properties['reff'].shape, 10)
         # optical_properties = optical_properties.drop_vars('extinction')
         cloud_scatterer = copy.deepcopy(self.cloud_scatterer)
-        cloud_scatterer['veff'].values[:] = np.full(cloud_scatterer['veff'].shape, 0.1)
+        cloud_scatterer['veff'].values[:] = np.full(cloud_scatterer['veff'].shape, 0.1, dtype=cloud_scatterer['veff'].values.dtype)
         # cloud_scatterer['reff'].values[np.isfinite(cloud_scatterer['reff'].values)] = 10
-        cloud_scatterer['reff'].values[:] = np.full(cloud_scatterer['reff'].shape, 10)
+        cloud_scatterer['reff'].values[:] = np.full(cloud_scatterer['reff'].shape, 10.0, dtype=cloud_scatterer['reff'].values.dtype)
         optical_properties = self.optical_property_generator(cloud_scatterer)[self.wavelength]
         ext = optical_properties['extinction'].copy(deep=True)
         ext.values = cloud
@@ -205,7 +205,7 @@ class DiffRendererAT3D(object):
         gt_images += self.image_mean
         gt_images = list(gt_images)
 
-        unknown_scatterers = self.get_medium_estimator(mask.cpu().numpy())
+        unknown_scatterers = self.get_medium_estimator(cloud.detach().cpu().numpy(), mask.cpu().numpy())
 
         # now we form state_gen which updates the solvers with an input_state.
         solvers_reconstruct = at3d.containers.SolversDict()

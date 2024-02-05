@@ -284,7 +284,7 @@ def main(cfg: DictConfig):
 
 
             # print(est_vol[extinction[0]>0].mean().item())
-            if len(est_vol_list) == cfg.shdom.n_clouds:
+            if len(est_vol_list) == cfg.renderer.n_clouds:
                 if imagery == 'airmspi':
                     loss = diff_renderer_shdom.render(est_vol_list, mask_list, volume_list, images_list, shdom_proj_lists)
                 else:

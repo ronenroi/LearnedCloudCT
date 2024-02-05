@@ -273,7 +273,7 @@ def main(cfg: DictConfig):
 
 
             # print(est_vol[extinction[0]>0].mean().item())
-            if len(est_vol_list) == cfg.shdom.n_clouds:
+            if len(est_vol_list) == cfg.renderer.n_clouds:
                 loss = diff_renderer_at3d.parallel_render(est_vol_list, masks_conf, images_list)
 
                 # torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.optimizer.clip)

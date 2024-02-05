@@ -85,7 +85,9 @@ decoder:
   average_cams: False
   feature_flatten: True
 
-shdom:
+renderer:
+  engine: shdom # shdom
+  n_clouds: 1 #n_clouds>1 is supported for at3d
   n_jobs: 35
   use_forward_grid: True
   add_rayleigh: True

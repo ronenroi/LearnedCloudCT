@@ -1,4 +1,4 @@
-# This file contains the main script for VIP-CT and ProbCT training.
+# This file contains the main script for ProbCT self-supervised training.
 # You are very welcome to use this code. For this, clearly acknowledge
 # the source of this code, and cite the paper described in the readme file.
 #
@@ -28,7 +28,7 @@ from metrics.test_errors import *
 from scene.volumes import Volumes
 from scene.cameras import PerspectiveCameras
 from renderer.shdom_renderer import DiffRendererSHDOM, DiffRendererSHDOM_AirMSPI
-
+from renderer.at3d_renderer import DiffRendererAT3D
 CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)),"../", "configs")
 CE = torch.nn.CrossEntropyLoss(reduction='mean')
 
@@ -166,10 +166,16 @@ def main(cfg: DictConfig):
     # err = torch.nn.L1Loss(reduction='sum')
     # Set the model to the training mode.
     model.train().float()
+
+    engine = cfg.renderer.engine
     if imagery == 'cloudct':
-        diff_renderer_shdom = DiffRendererSHDOM(cfg=cfg)
+        if engine == 'shdom':
+            diff_renderer_shdom = DiffRendererSHDOM(cfg=cfg)
+        elif engine == 'at3d':
+            diff_renderer_shdom = DiffRendererAT3D(cfg=cfg)
     elif imagery == 'airmspi':
-        diff_renderer_shdom = DiffRendererSHDOM_AirMSPI(cfg=cfg)
+        if engine == 'shdom':
+            diff_renderer_shdom = DiffRendererSHDOM_AirMSPI(cfg=cfg)
     else:
         NotImplementedError()
 
@@ -272,9 +278,25 @@ def main(cfg: DictConfig):
 
 
             if imagery == 'airmspi':
-                loss = diff_renderer_shdom.render(est_vol, mask_conf, volume, images, shdom_proj_list)
+                if engine == 'shdom':
+                    loss = diff_renderer_shdom.render(est_vol, mask_conf, volume, images, shdom_proj_list)
+                elif engine == 'at3d':
+                    NotImplementedError()
+                elif engine == 'mc':
+                    NotImplementedError()
+                else:
+                    NotImplementedError()
+                
             else:
-                loss = diff_renderer_shdom.render(est_vol, mask_conf, volume, images, cloud_index=cloud_path)
+                if engine == 'shdom':
+                    loss = diff_renderer_shdom.render(est_vol, mask_conf, volume, images, cloud_index=cloud_path)
+                elif engine == 'at3d':
+                    loss = diff_renderer_shdom.render(est_vol, mask_conf, images) 
+                elif engine == 'mc':
+                    NotImplementedError()
+                else:
+                    NotImplementedError()
+                    
             # gt_vol = extinction[0]
             # M = masks[0].detach().cpu()
             # if conf_vol is not None:

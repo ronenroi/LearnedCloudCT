@@ -60,9 +60,10 @@ decoder:
   fan_in_fan_out: False
   merge_weights: False
 
-shdom:
+renderer:
+  engine: at3d # shdom, at3d, mc
   n_jobs: 40
-  n_clouds: 1
+  n_clouds: 1 #n_clouds>1 is supported for at3d
   use_forward_grid: True
   add_rayleigh: True
-  use_forward_phase_albedo: False
+  use_forward_phase_albedo: False # for debug

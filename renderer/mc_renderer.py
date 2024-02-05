@@ -103,10 +103,10 @@ class DiffRendererMC(object):
         self.get_sun()
         self.min_bound = cfg.cross_entropy.min
         self.max_bound = cfg.cross_entropy.max
-        self.add_rayleigh = cfg.shdom.add_rayleigh
+        self.add_rayleigh = cfg.renderer.add_rayleigh
         self.Npath = int(5e7)
         self.Npath_times = 1
-        self.use_forward_grid = cfg.shdom.use_forward_grid
+        self.use_forward_grid = cfg.renderer.use_forward_grid
         self.device = device
         parser = argparse.ArgumentParser()
         # CloudGenerator = getattr(shdom.generate, 'Homogenous')

@@ -127,16 +127,16 @@ class DiffRendererSHDOM(object):
         self.projections = self.get_projections(cfg)
         self.cameras = shdom.Camera(shdom.RadianceSensor(), self.projections)
         self.rte_solver = self.get_rte_solver(cfg)
-        self.n_jobs = cfg.shdom.n_jobs
-        self.n_clouds = cfg.shdom.n_clouds
+        self.n_jobs = cfg.renderer.n_jobs
+        self.n_clouds = cfg.renderer.n_clouds
         self.min_bound = cfg.cross_entropy.min
         self.max_bound = cfg.cross_entropy.max
-        self.use_forward_grid = cfg.shdom.use_forward_grid
-        self.use_forward_phase_albedo = cfg.shdom.use_forward_phase_albedo
+        self.use_forward_grid = cfg.renderer.use_forward_grid
+        self.use_forward_phase_albedo = cfg.renderer.use_forward_phase_albedo
         if self.use_forward_phase_albedo:
             self.forward_cloud_path = self.get_microphysics_path(cfg)
         self.mie_base_path = os.path.join(DEFAULT_PYSHDOM_ROOT, 'mie_tables/polydisperse/Water_<wavelength>nm.scat')
-        self.add_rayleigh = cfg.shdom.add_rayleigh
+        self.add_rayleigh = cfg.renderer.add_rayleigh
 
         parser = argparse.ArgumentParser()
         CloudGenerator = Homogeneous #getattr(shdom.generate.Homogeneous, 'Homogenous')
@@ -593,12 +593,12 @@ class DiffRendererSHDOM_AirMSPI(object):
         self._init_solution = False
 
         self.rte_solver = self.get_rte_solver(cfg)
-        self.n_jobs = cfg.shdom.n_jobs
+        self.n_jobs = cfg.renderer.n_jobs
         self.min_bound = cfg.cross_entropy.min
         self.max_bound = cfg.cross_entropy.max
-        self.use_forward_grid = cfg.shdom.use_forward_grid
+        self.use_forward_grid = cfg.renderer.use_forward_grid
         self.mie_base_path = os.path.join(DEFAULT_PYSHDOM_ROOT, 'mie_tables/polydisperse/Water_<wavelength>nm.scat')
-        self.add_rayleigh = cfg.shdom.add_rayleigh
+        self.add_rayleigh = cfg.renderer.add_rayleigh
 
         parser = argparse.ArgumentParser()
         # CloudGenerator = getattr(shdom.generate, 'Homogenous')
