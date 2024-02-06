@@ -61,7 +61,7 @@ python scripts/generate_mie_tables.py  \
 Return to project directory and create data directory:
 ```
 cd ../
-mkdir Data
+mkdir data
 ```
 &nbsp;
 You can also train the model using different RT engine:
@@ -112,9 +112,9 @@ LearnedCloudCT/pyshdom4VIP-CT/VIP-CT_scripts
 
 &nbsp;
 ### [B] Supervised training 
-Set the config file at configs/train.yaml according to the desired experiment, e.g. dataset_name: 'CASS_600CCN_roiprocess_10cameras_20m' / 'BOMEX_50CCN_10cameras_20m' etc.
+Set the config file at `configs/train.yaml` according to the desired experiment, e.g. dataset_name: 'CASS_600CCN_roiprocess_10cameras_20m' / 'BOMEX_50CCN_10cameras_20m' etc.
 
-For training ProbCT model with AirMSPI imaging geometry, change configs/train.yaml accordingly.
+For training ProbCT model with AirMSPI imaging geometry, change `configs/train.yaml` accordingly.
 
 Then, run
 
@@ -122,9 +122,9 @@ Then, run
 python scripts/train_ProbCT.py
 ```
 ### [C] Self-supervised training for image consistency
-Set the config file at configs/ft_train.yaml according to the desired experiment, e.g. pre-trained model path.
+Set the config file at `configs/ft_train.yaml` according to the desired experiment, e.g. pre-trained model path.
 
-Self-supervised training of ProbCT model on real-world AirMSPI images can be done by setting configs/ft_train.yaml with "AirMSPI_32N123W_experiment_234_clouds" dataset.
+Self-supervised training of ProbCT model on real-world AirMSPI images can be done by setting `configs/ft_train.yaml` with "AirMSPI_32N123W_experiment_234_clouds" dataset.
 
 Then, run (this script requires both strong GPU and CPU cores)
 
@@ -132,15 +132,18 @@ Then, run (this script requires both strong GPU and CPU cores)
 python scripts/ft_train_ProbCT.py
 ```
 
+For using the AT3D RT engine change in `configs/ft_train.yaml` the renderer type from `shdom` to `at3d`.
+
+
 ### Evaluation 
-Set the config file at configs/test.yaml according to the desired experiment and the path of ProbCT trained model.
+Set the config file at `configs/test.yaml` according to the desired experiment and the path of ProbCT trained model.
 Then, run
 
 ```
 python scripts/test_ProbCT.py
 ```
 
-For inference on AirMSPI test images, set the model path in configs/test_airmspi.yaml, and run
+For inference on AirMSPI test images, set the model path in `configs/test_airmspi.yaml`, and run
 
 ```
 python scripts/test_ProbCT_AirMSPI.py
@@ -149,7 +152,7 @@ or via this Jupyter notebook
 ```
 notebooks/AirMSPI_results.ipynb
 ```
-This notebook also demonstrates downstream products of this experimentץ  
+This notebook also demonstrates downstream products of this experiment.  
 &nbsp;
 
 If you use this package in an academic publication please acknowledge the appropriate publications (see LICENSE file). 
