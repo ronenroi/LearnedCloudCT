@@ -54,7 +54,7 @@ def main(cfg: DictConfig):
         # Make the root of the experiment directory
         os.makedirs(results_dir, exist_ok=True)
 
-    resume_cfg_path = os.path.join(checkpoint_resume_path.split('/checkpoints')[0],'.hydra/config.yaml')
+    resume_cfg_path = os.path.join(checkpoint_resume_path.split('/model.pth')[0],'.hydra/config.yaml')
     net_cfg = OmegaConf.load(resume_cfg_path)
     cfg = OmegaConf.merge(net_cfg,cfg)
 
@@ -67,11 +67,12 @@ def main(cfg: DictConfig):
     loaded_data = torch.load(checkpoint_resume_path, map_location=device)
     model.load_state_dict(loaded_data["model"])
     model.to(device)
+    model.eval().float()
     # Set the model to eval mode.
-    if cfg.ct_net.encoder_mode == 'eval':
-        model._image_encoder.eval()
-        model.mlp_cam_center.eval()
-        model.mlp_xyz.eval()
+    # if cfg.ct_net.encoder_mode == 'eval':
+    #     model._image_encoder.eval()
+    #     model.mlp_cam_center.eval()
+    #     model.mlp_xyz.eval()
 
     # for name, param in model.named_parameters():
     #     # if 'decoder.decoder.2.mlp.7' in name or 'decoder.decoder.3' in name:
@@ -188,7 +189,9 @@ def main(cfg: DictConfig):
         if cfg.rerender:
             diff_renderer_shdom = DiffRendererSHDOM_AirMSPI(cfg=cfg)
             cloud = est_vols[0]
-            loss = diff_renderer_shdom.render([cloud],masks,[val_volume],[gt_image], [[projection_list]])
+            mask = masks[0]
+            loss = diff_renderer_shdom.render(cloud, mask, val_volume, gt_image, [projection_list])
+
 
 
         airmspi_cloud = {'cloud':est_vols[0].cpu().numpy(),'prob_vol':prob_vol,

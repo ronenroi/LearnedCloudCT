@@ -599,13 +599,13 @@ class DiffRendererSHDOM_AirMSPI(object):
         self.use_forward_grid = cfg.renderer.use_forward_grid
         self.mie_base_path = os.path.join(DEFAULT_PYSHDOM_ROOT, 'mie_tables/polydisperse/Water_<wavelength>nm.scat')
         self.add_rayleigh = cfg.renderer.add_rayleigh
-
         parser = argparse.ArgumentParser()
+        parser.add_argument('-f') # add a dummy variable for jupyter notebook
+
         # CloudGenerator = getattr(shdom.generate, 'Homogenous')
         # CloudGenerator = Monotonous
         CloudGenerator = Homogeneous
         parser = CloudGenerator.update_parser(parser)
-
         AirGenerator = None
         if self.add_rayleigh:
             AirGenerator = shdom.generate.AFGLSummerMidLatAir
@@ -620,12 +620,13 @@ class DiffRendererSHDOM_AirMSPI(object):
         self.air_generator = AirGenerator(self.args) if AirGenerator is not None else None
 
 
-
         # L2 Loss
         self.image_mean = cfg.data.mean
         self.image_std = cfg.data.std
         self.loss_shdom = LossSHDOM().apply
         self.loss_operator = torch.nn.Identity()
+
+
 
     def get_grid(self, grid):
         grid = shdom.Grid(x=grid[0],y=grid[1],z=grid[2])

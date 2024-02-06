@@ -61,7 +61,7 @@ python scripts/generate_mie_tables.py  \
 Return to project directory and create data directory:
 ```
 cd ../
-mkdir ../../Data
+mkdir Data
 ```
 &nbsp;
 You can also train the model using different RT engine:
@@ -145,6 +145,11 @@ For inference on AirMSPI test images, set the model path in configs/test_airmspi
 ```
 python scripts/test_ProbCT_AirMSPI.py
 ```
+or via this Jupyter notebook 
+```
+notebooks/AirMSPI_results.ipynb
+```
+This notebook also demonstrates downstream products of this experimentץ  
 &nbsp;
 
 If you use this package in an academic publication please acknowledge the appropriate publications (see LICENSE file). 

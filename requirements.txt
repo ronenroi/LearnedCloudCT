@@ -141,3 +141,4 @@ webencodings==0.5.1
 websocket-client==1.7.0
 widgetsnbextension==4.0.9
 zipp==3.17.0
+mayavi==4.8.1

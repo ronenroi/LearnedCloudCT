@@ -26,7 +26,8 @@ import socket
 import random
 import scipy.io as sio
 
-DEFAULT_DATA_ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)),'../../../Data')
+# DEFAULT_DATA_ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)),'../../../Data')
+DEFAULT_DATA_ROOT = os.path.join(os.path.dirname(os.path.realpath(__file__)),'../data')
 
 def trivial_collate(batch):
     """
