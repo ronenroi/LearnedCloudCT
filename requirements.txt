@@ -125,7 +125,6 @@ terminado==0.18.0
 tinycss2==1.2.1
 tomli==2.0.1
 torch==2.1.2
-torchaudio==0.8.1
 torchvision==0.16.2
 tornado==6.4
 traitlets==5.14.1
