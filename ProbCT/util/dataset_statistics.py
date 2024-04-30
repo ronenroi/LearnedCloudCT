@@ -178,13 +178,13 @@ def cloud_tsne():
         clouds = np.array(ext)
         if not np.isclose(grid[1]-grid[0],0.04):
             clouds=clouds[:,:,:,::2][...,:64]
-        exts.append(np.log(np.abs(np.fft.fftn(clouds[:200]))))
+        exts.append(np.log(np.abs(np.fft.fftn(clouds[:200], axes=(1,2,3)))))
         names+=[name]*200
 
     # fig, axs = plt.subplots(2, 3)
     # axs = axs.ravel()
 
-    tsne = TSNE(n_components=2, perplexity=5, early_exaggeration=12)
+
     X=np.vstack(exts)
     X=X.reshape(X.shape[0],-1)
     
@@ -193,6 +193,7 @@ def cloud_tsne():
     
 
     print()
+
     MODEL_DIR = os.path.join("models", "Test_BOMEX500", "Trained_BOMEX500")
     model, cfg, device = load_model(MODEL_DIR=MODEL_DIR)
     model.to(device)
@@ -212,9 +213,8 @@ def cloud_tsne():
 
     pred_clouds = pred_clouds.reshape(pred_clouds.shape[0], -1)
     pred_clouds_cass = pred_clouds[np.isfinite(pred_clouds.sum(-1))]
-    
-    
 
+    tsne = TSNE(n_components=2, perplexity=30, early_exaggeration=12)
     data = tsne.fit_transform(np.concatenate((X,pred_clouds_bomex,pred_clouds_cass)))
     X_2d = data[:800]
     pred_2d_bomex = data[800:1000]
