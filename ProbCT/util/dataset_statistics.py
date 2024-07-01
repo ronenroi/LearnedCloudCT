@@ -78,8 +78,8 @@ def load_model(MODEL_DIR):
     return model, cfg, device
 
 
-def plot_pdfs(data, target_names, legend, bandwidth=0.04, grid_size=1):
-    def construct_grids(data, bandwidth=0.4, grid_size=1):
+def plot_pdfs(data, target_names, legend, bandwidth=5, grid_size=1):
+    def construct_grids(data, bandwidth=5, grid_size=1):
         """Construct the map grid from the batch object
 
         Parameters
