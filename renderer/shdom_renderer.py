@@ -187,7 +187,8 @@ class DiffRendererSHDOM(object):
     def get_rte_solver(self,cfg):
         if cfg.data.dataset_name == 'CASS_600CCN_roiprocess_10cameras_20m':
             path = '/wdata/roironen/Data/CASS_256x256x139_600CCN_50m_32x32x32_roipreprocess/10cameras_20m/solver2.pkl'
-        elif cfg.data.dataset_name == 'BOMEX_50CCN_10cameras_20m' or 'BOMEX_50CCN_aux_10cameras_20m':
+        elif cfg.data.dataset_name == 'BOMEX_50CCN_10cameras_20m' or  cfg.data.dataset_name =='BOMEX_50CCN_aux_10cameras_20m' \
+            or  cfg.data.dataset_name =='BOMEX_10cameras_20m':
             path = '/wdata/roironen/Data/BOMEX_128x128x100_50CCN_50m_micro_256/10cameras_20m/solver.pkl'
         else:
             NotImplementedError()

@@ -12,7 +12,6 @@ from MC_renderer.classes.camera import Camera2 as MCcamera
 from MC_renderer.classes.camera import Camera as CameraO
 from MC_renderer.classes.volume import Volume as MCvolume
 from MC_renderer.classes.grid import Grid as MCgrid
-
 class LossSHDOM(torch.autograd.Function):
     @staticmethod
     def forward(ctx, input, optimizer):
@@ -96,7 +95,7 @@ class DiffRendererMC(object):
     scatterer_name: str
         The name of the scatterer that will be optimized.
     """
-    def __init__(self, cfg,device):
+    def __init__(self, cfg):
         self.cfg = cfg
         self.scatterer_name = 'cloud'
         self.cameras = self.get_cameras(cfg)
@@ -104,15 +103,17 @@ class DiffRendererMC(object):
         self.min_bound = cfg.cross_entropy.min
         self.max_bound = cfg.cross_entropy.max
         self.add_rayleigh = cfg.renderer.add_rayleigh
-        self.Npath = int(5e7)
+        self.Npath = int(1e8)
         self.Npath_times = 1
-        self.use_forward_grid = cfg.renderer.use_forward_grid
-        self.device = device
-        parser = argparse.ArgumentParser()
-        # CloudGenerator = getattr(shdom.generate, 'Homogenous')
-        CloudGenerator = Monotonous
-        parser = CloudGenerator.update_parser(parser)
+        self.im_background = 0.0176
 
+        self.use_forward_grid = cfg.renderer.use_forward_grid
+        # self.device = device
+        # parser = argparse.ArgumentParser()
+        # CloudGenerator = getattr(shdom.generate, 'Homogenous')
+        # CloudGenerator = Monotonous
+        # parser = CloudGenerator.update_parser(parser)
+        #
 
 
         # self.args = parser.parse_args()
@@ -147,7 +148,7 @@ class DiffRendererMC(object):
         if self.cfg.data.dataset_name == 'CASS_600CCN_roiprocess_10cameras_20m':
             path = '/wdata/roironen/Data/CASS_256x256x139_600CCN_50m_32x32x32_roipreprocess/10cameras_20m/solver2.pkl'
         elif self.cfg.data.dataset_name == 'BOMEX_50CCN_10cameras_20m' or 'BOMEX_50CCN_aux_10cameras_20m':
-            path = '/wdata/roironen/Data/BOMEX_128x128x100_50CCN_50m_micro_256/10cameras_20m/train/solver.pkl'
+            path = '/wdata/roironen/Data/BOMEX_128x128x100_50CCN_50m_micro_256/10cameras_20m/solver.pkl'
         else:
             NotImplementedError()
         solver = shdom.RteSolver()
@@ -165,44 +166,75 @@ class DiffRendererMC(object):
     def get_cameras(self,cfg):
         if cfg.data.dataset_name == 'CASS_600CCN_roiprocess_10cameras_20m':
             path = '/wdata/roironen/Data/CASS_256x256x139_600CCN_50m_32x32x32_roipreprocess/10cameras_20m/shdom_projections2.pkl'
-        elif cfg.data.dataset_name == 'BOMEX_50CCN_10cameras_20m' or 'BOMEX_50CCN_aux_10cameras_20m':
-            path = '/wdata/roironen/Data/BOMEX_128x128x100_50CCN_50m_micro_256/10cameras_20m/train/shdom_projections.pkl'
-        else:
+        elif cfg.data.dataset_name == 'BOMEX_50CCN_10cameras_20m' or cfg.data.dataset_name == 'BOMEX_50CCN_aux_10cameras_20m' or cfg.data.dataset_name == 'BOMEX_10cameras_20m':
+            path = '/wdata/roironen/Data/BOMEX_128x128x100_50CCN_50m_micro_256/10cameras_20m/shdom_projections.pkl'
+        elif cfg.data.dataset_name == 'HAWAII_2000CCN_10cameras_20m':
+            path = '/wdata/roironen/Data/HAWAII_2000CCN_32x32x64_50m/10cameras_20m/shdom_projections.pkl'
             NotImplementedError()
         with open(path, 'rb') as pickle_file:
             projection_list = pickle.load(pickle_file)['projections']
         cameras = []
-
+        volume_center = np.array([1.6/2,1.6/2,0.68 * 32 * 0.04]) #/ 2
+        t_list=[]
+        phi_list=[]
+        R_list = []
         for projection in projection_list:
             # euler_angles = np.array((180 - projection.azimuth, 0, projection.zenith - 90))
-            camera = MCcamera(t=projection.position, R=projection._rotation_matrix, focal_length=projection._focal,sensor_size=1,pixels=projection.resolution)
-            cameras.append(camera)
+            # T_world = projection.position
+            # T = -projection._rotation_matrix.T @ T_world
+            from scipy.spatial.transform import Rotation
+
+            r = Rotation.from_matrix(projection._rotation_matrix)
+            angles = r.as_euler("xyz", degrees=True)
+            n_angles = np.array([angles[0],angles[2],angles[1]])
+            phi_list.append(angles[1])
+            t_list.append(projection.position)
+            R_list.append(projection._rotation_matrix)
+            # print(n_angles)
+            r = Rotation.from_euler("xyz",n_angles,degrees=True).as_matrix()
+            t = projection.position + volume_center
+            # t_new = np.array(())
+            # camera = CameraO(t=projection.position + volume_center, euler_angles=n_angles, focal_length=projection._focal, sensor_size=np.array((2, 2)),pixels=projection.resolution)
+            # print(camera.t)
+            # camera = MCcamera(t=projection.position + volume_center, R=r, focal_length=projection._focal, sensor_size=np.array((2, 2)),pixels=projection.resolution)
+            # cameras.append(camera)
+        volume_center = np.array([1.6/2, 1.6/2, 0]) # ???
 
         N_cams = 10
-        cameras = []
-        volume_center = np.array([0.6,0.6,0.6]) / 2
-        volume_center[-1] *= 1.8
+        cameras1 = []
+        # volume_center[-1] *= 1.8
         # edge_z = bbox[-1, -1]
-        R = 4
-        focal_length = 1e-4  #####################
-        sensor_size = np.array((3e-4, 3e-4)) / 2  #####################
+        # R = 500
+        focal_length = projection._focal #1e-4  #####################
+        sensor_size = np.array((2, 2))#np.array((3e-4, 3e-4)) / 2  #####################
         ps_max = 116
         pixels = np.array((ps_max, ps_max))
 
         cam_deg = 360 // (N_cams - 1)
-        for cam_ind in range(N_cams - 1):
-            theta = 90
+        for cam_ind in range(N_cams - 1 +1):
+            theta = 0
             theta_rad = theta * (np.pi / 180)
-            phi = (-(N_cams // 2) + cam_ind) * cam_deg
+            # phi = (-(N_cams // 2) + cam_ind) * cam_deg
+            # print((-(N_cams // 2) + cam_ind) * cam_deg)
+            phi = phi_list[cam_ind]#-180
+            # print(phi)
             phi_rad = phi * (np.pi / 180)
-            t = R * theta_phi_to_direction(theta_rad, phi_rad) + volume_center
-            euler_angles = np.array((180 - theta, 0, phi - 90))
-            camera = CameraO(t, euler_angles, focal_length, sensor_size, pixels)
-            cameras.append(camera)
-        t = R * theta_phi_to_direction(0, 0) + volume_center
-        euler_angles = np.array((180, 0, -90))
-        cameras.append(CameraO(t, euler_angles, cameras[0].focal_length, cameras[0].sensor_size, cameras[0].pixels))
-        return cameras
+
+            t = t_list[cam_ind] #+ volume_center #R * theta_phi_to_direction(theta_rad, phi_rad) #+ volume_center
+
+            euler_angles = np.array((180 - theta, phi, 180))
+            # print(euler_angles)
+            # camera = CameraO(t, euler_angles, focal_length, sensor_size, pixels)
+            camera = MCcamera(t, R_list[cam_ind], focal_length, sensor_size, pixels)
+
+            # print(camera.t)
+
+            cameras1.append(camera)
+        # print(phi_list)
+        # t = R * theta_phi_to_direction(0, 0) + volume_center
+        # euler_angles = np.array((180, 0, -90))
+        # cameras1.append(CameraO(t, euler_angles, cameras1[0].focal_length, cameras1[0].sensor_size, cameras1[0].pixels))
+        return cameras1
 
 
     def get_medium_estimator(self, cloud_extinction, mask, volume):
@@ -254,7 +286,7 @@ class DiffRendererMC(object):
         self.medium.compute_direct_derivative(self.rte_solver)
         self._num_parameters = self.medium.num_parameters
 
-    def create_renderer(self,volume):
+    def create_renderer(self, volume):
 
         ########################
         # Atmosphere parameters#
@@ -273,6 +305,23 @@ class DiffRendererMC(object):
         scene_rr.set_cloud_mask(volume.cloud_mask)
 
         return scene_rr
+
+    def shdom2mc_transform(self, shdom_images):
+        mc_grid = self.medium.grid
+        mc_images = shdom_images.astype(np.float32)
+        mc_images[mc_images<=self.im_background*1.05] = 0
+        ratio = (mc_grid.bbox_size[0] * mc_grid.bbox_size[1] * 1e6)  * 1e3 #/ (np.cos(self.sun_angles[1]))
+        mc_images /= ratio
+
+        return mc_images
+
+    def mc2shdom_transform(self, mc_images):
+        mc_grid = self.medium.grid
+        shdom_images = mc_images
+        ratio = (mc_grid.bbox_size[0] * mc_grid.bbox_size[1] * 1e6)  * 1e3 #/ (np.cos(self.sun_angles[1]))
+        shdom_images *= ratio
+        shdom_images[shdom_images <= self.im_background/2] = self.im_background
+        return shdom_images
     
     def render(self, cloud, mask, volume, gt_images):
         """
@@ -299,15 +348,18 @@ class DiffRendererMC(object):
         cloud[:, 0, :] = 0
         cloud[:, -1, :] = 0
         cloud[:, :,-1] = 0
-
+        self.device = cloud.device
+        gt_images = gt_images.squeeze()
         gt_images *= self.image_std
         gt_images += self.image_mean
 
-        cloud_state = cloud[mask]
-        self.medium = self.get_medium_estimator(cloud.detach().cpu().numpy(),mask.cpu().numpy(), volume)
+
+        self.medium = self.get_medium_estimator(cloud.detach().cpu().numpy(), mask.cpu().numpy(), volume)
         mc_renderer = self.create_renderer(self.medium)
-        images, gradient = mc_renderer.render(I_gt=gt_images, to_torch=True)
-        gradient *= (gt_images.size())
+
+        images, gradient = mc_renderer.render(I_gt=self.shdom2mc_transform(gt_images), to_torch=True)
+        gradient *= (gt_images.shape[-2]*gt_images.shape[-1])#(gt_images.size)
+        images = self.mc2shdom_transform(images) #(gt_images.shape[-2]*gt_images.shape[-1])
         # I_opt = torch.tensor(I_opt, dtype=input.dtype, device=total_grad.device)  # * (measurements.numel())
         # scene_rr.I_opt = I_opt.detach().cpu().numpy()
         print('Done image consistency loss stage')
@@ -317,29 +369,35 @@ class DiffRendererMC(object):
         # cloud_estimator.set_mask(cloud_mask)
 
 
-        vmax = max(gt_images[0,5].max().item(),images[5].max())
-        f, axarr = plt.subplots(1, 3)
-        axarr[0].imshow(gt_images[0,5],vmin=0,vmax=vmax)
-        axarr[1].imshow(images[5], vmin=0, vmax=vmax)
-        axarr[2].imshow(np.abs(gt_images[0,5] - images[5]))
-        plt.show()
+        # vmax = max(gt_images[0,5].max().item(),images[5].max())
+        # f, axarr = plt.subplots(1, 2)
+        # axarr[0].imshow(gt_images[0,4])#,vmin=0,vmax=vmax
+        # axarr[1].imshow(images[4])
+        # # axarr[2].imshow(np.abs(gt_images[0,5] - images[5]))
+        # plt.show()
         #
         # plt.scatter(gt_images.ravel(),np.array(images).ravel())
         # plt.axis('square')
         # plt.show()
-        # f, axarr = plt.subplots(1, len(images), figsize=(16, 16))
-        # for ax, image in zip(axarr, images):
+        # f, axarr = plt.subplots(2, images.shape[0], figsize=(16, 16))
+        # for ax, image in zip(axarr[0], images):
+        #     ax.imshow(image)
+        #     ax.invert_xaxis()
+        #     ax.invert_yaxis()
+        #     ax.axis('off')
+        # for ax, image in zip(axarr[1], gt_images):
         #     ax.imshow(image)
         #     ax.invert_xaxis()
         #     ax.invert_yaxis()
         #     ax.axis('off')
         # plt.show()
-        self.loss = torch.sum((images - gt_images)**2)
+        # self.loss = np.sum((images - gt_images)**2)
         self.images = images
         self.gt_images = gt_images
-        self.gradient = gradient
-        l2_loss = self.loss_mc(cloud_state,self) / np.sum(gt_images**2) #gt_images.size
-        return self.loss_operator(l2_loss)
+        # self.gradient = gradient
+        # l2_loss = self.loss_mc(cloud_state,self) / np.sum(gt_images**2) #gt_images.size
+        # return self.loss_operator(l2_loss)
+        return None
 
 
 

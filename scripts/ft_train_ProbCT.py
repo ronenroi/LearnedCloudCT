@@ -29,6 +29,7 @@ from scene.volumes import Volumes
 from scene.cameras import PerspectiveCameras
 from renderer.shdom_renderer import DiffRendererSHDOM, DiffRendererSHDOM_AirMSPI
 from renderer.at3d_renderer import DiffRendererAT3D
+from renderer.mc_renderer import DiffRendererMC
 CONFIG_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)),"../", "configs")
 CE = torch.nn.CrossEntropyLoss(reduction='mean')
 
@@ -170,12 +171,16 @@ def main(cfg: DictConfig):
     engine = cfg.renderer.engine
     if imagery == 'cloudct':
         if engine == 'shdom':
-            diff_renderer_shdom = DiffRendererSHDOM(cfg=cfg)
+            diff_renderer = DiffRendererSHDOM(cfg=cfg)
         elif engine == 'at3d':
-            diff_renderer_shdom = DiffRendererAT3D(cfg=cfg)
+            diff_renderer = DiffRendererAT3D(cfg=cfg)
+        elif engine == 'mc':
+            diff_renderer = DiffRendererMC(cfg=cfg)
+        else:
+            NotImplementedError()
     elif imagery == 'airmspi':
         if engine == 'shdom':
-            diff_renderer_shdom = DiffRendererSHDOM_AirMSPI(cfg=cfg)
+            diff_renderer = DiffRendererSHDOM_AirMSPI(cfg=cfg)
     else:
         NotImplementedError()
 
@@ -228,7 +233,7 @@ def main(cfg: DictConfig):
                                              camera_center=torch.tensor(np.array(camera_center), device=device).float(),
                                              device=device)
                 cloud_path = cloud_path[0].split('cloud_results_')[-1].split('.pkl')[0]
-                volume = Volumes(torch.unsqueeze(torch.tensor(extinction, device=device).float(), 1), grid)
+                volume = Volumes(torch.unsqueeze(torch.tensor(np.array(extinction), device=device).float(), 1), grid)
                 if model.mask_type == 'gt_mask':
                    masks = volume.extinctions[0] > volume._ext_thr
             masks = [torch.tensor(mask) if mask is not None else mask for mask in masks]
@@ -279,7 +284,7 @@ def main(cfg: DictConfig):
 
             if imagery == 'airmspi':
                 if engine == 'shdom':
-                    loss = diff_renderer_shdom.render(est_vol, mask_conf, volume, images, shdom_proj_list)
+                    loss = diff_renderer.render(est_vol, mask_conf, volume, images, shdom_proj_list)
                 elif engine == 'at3d':
                     NotImplementedError()
                 elif engine == 'mc':
@@ -289,11 +294,11 @@ def main(cfg: DictConfig):
                 
             else:
                 if engine == 'shdom':
-                    loss = diff_renderer_shdom.render(est_vol, mask_conf, volume, images, cloud_index=cloud_path)
+                    loss = diff_renderer.render(est_vol, mask_conf, volume, images, cloud_index=cloud_path)
                 elif engine == 'at3d':
-                    loss = diff_renderer_shdom.render(est_vol, mask_conf, images) 
+                    loss = diff_renderer.render(est_vol, mask_conf, images)
                 elif engine == 'mc':
-                    NotImplementedError()
+                    loss = diff_renderer.render(est_vol, mask_conf, volume, images)
                 else:
                     NotImplementedError()
                     
@@ -363,7 +368,7 @@ def main(cfg: DictConfig):
                     writer.monitor_scatterer_error(relative_mass_err, relative_err)
                     for ind in range(len(out["output"])):
                         writer.monitor_scatter_plot(out["output"][ind], out["volume"][ind],ind=ind)
-                        writer.monitor_images(diff_renderer_shdom.gt_images,np.array(diff_renderer_shdom.images))
+                        writer.monitor_images(diff_renderer.gt_images,np.array(diff_renderer.images))
 
             # with torch.cuda.device(device=device):
             #     torch.cuda.empty_cache()

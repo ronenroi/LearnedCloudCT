@@ -18,7 +18,7 @@ checkpoint_resume_path: '/wdata/roironen/Deploy/VIPCT/outputs/2023-04-05_BOMEX_5
 gpu: 0
 
 data:
-  dataset_name: 'BOMEX_50CCN_10cameras_20m' #'HAWAII_2000CCN_10cameras_20m' BOMEX_10cameras_20m#'BOMEX_50CCN_10cameras_20m' #'CASS_600CCN_roiprocess_10cameras_20m'
+  dataset_name: 'BOMEX_10cameras_20m' #'HAWAII_2000CCN_10cameras_20m' BOMEX_10cameras_20m#'BOMEX_50CCN_10cameras_20m' #'CASS_600CCN_roiprocess_10cameras_20m'
 #  dataset_name: 'AirMSPI_32N123W_experiment_234_clouds' # for AirMSPI
   n_training: -1
   image_size: None
@@ -61,7 +61,7 @@ decoder:
   merge_weights: False
 
 renderer:
-  engine: at3d # shdom, at3d, mc
+  engine: mc # shdom, at3d, mc
   n_jobs: 40
   n_clouds: 1 #n_clouds>1 is supported for at3d
   use_forward_grid: True
