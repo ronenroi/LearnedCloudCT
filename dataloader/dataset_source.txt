@@ -1,0 +1,7 @@
+# This document contains all links for the datasets needed to train and evaluate ProbCT. 
+# The data is freely available online on the Zenodo platform. 
+# The datasets include the training and test sets. These consist of 3D cloud scenes, their corresponding multi-view images, and NASA's AirMSPI images.
+# BOMEX500 dataset: https://zenodo.org/records/14789553
+# BOMEX50 dataset: https://zenodo.org/records/14795112
+# CASS600 dataset: https://zenodo.org/records/14794775 
+# HAWAI2000 dataset: https://zenodo.org/records/14794633 
